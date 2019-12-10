@@ -10,6 +10,7 @@ import (
 const (
 	MAX_WORKER = 30
 	JUDGE_HOST_PORT = "localhost:8888"
+	FRONT_HOST_PORT = "localhost:80"
 )
 
 type mutexJobMap struct {
@@ -39,14 +40,17 @@ func main() {
 	wg := sync.WaitGroup{}
 	jobMap := newMutexJobMap()
 	toJobQueue := newMutexJobQueue()
+
 	listenfromFront, err := net.Listen("tcp", "0.0.0.0:4649")
 	if err != nil {
-		fmt.Println("bind err")
+		fmt.Println("bind err front thread")
 	}
+
 	listenfromJudge, err := net.Listen("tcp", "0.0.0.0:5963")
 	if err != nil {
-		fmt.Println("bind err")
+		fmt.Println("bind err judge thread")
 	}
+
 	wg.Add(1)
 	go fromFrontThread(&listenfromFront, jobMap, toJobQueue)
 	wg.Add(1)
@@ -72,20 +76,20 @@ func doFrontThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue)
 	con.Read(dataBuf)
 	bufStr := string(dataBuf)
 	//read code session from csv
-	code_session := getsessionId(bufStr)
+	codeSession := getSessionId(bufStr)
 	//block race condition
 	jobMap.Lock()
 	now_worker := len(jobMap.dictionary) 
 	if now_worker < MAX_WORKER {
 		//pass the job
-		fmt.Println("pass the job judge : " + code_session)
+		fmt.Println("pass the job judge : " + codeSession)
 		con.Write([]byte("JUDGE\n"))
-		passJobToJudge(string(dataBuf))
-		jobMap.dictionary[code_session] = now_worker 
+		go passJobToJudge(string(dataBuf))
+		jobMap.dictionary[codeSession] = now_worker 
 	}else{
 		toJobQueue.Lock()
 		//add que
-		fmt.Println("add the job to que : " + code_session)
+		fmt.Println("add the job to que : " + codeSession)
 		toJobQueue.que = append(toJobQueue.que, bufStr)
 		fmt.Println(toJobQueue.que)
 		toJobQueue.Unlock()
@@ -100,6 +104,7 @@ func fromJudgeThread(listenfromJudge *net.Listener, jobMap *mutexJobMap, toJobQu
 		con, err := (net.Listener)(*(listenfromJudge)).Accept()
 		fmt.Println("accept Judge Thread");
 		if err != nil {
+			fmt.Println(err)
 			continue
 		}
 		go doFromJudgeThread(con, jobMap, toJobQueue)
@@ -113,11 +118,18 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	con.Read(dataBuf)
 	bufStr := string(dataBuf)
 	//read code session from csv
-	code_session := getsessionId(bufStr)
+	codeSession := getSessionId(bufStr)
+	if codeSession == "error" {
+		fmt.Println("pass the error to front : " + bufStr)
+		go passResultToFront(bufStr)
+		con.Write([]byte("OK\n"))
+		con.Close()
+		return 
+	}
 	//block race condition	
 	jobMap.Lock()
 	//remove from jobMap
-	delete(jobMap.dictionary, code_session)
+	delete(jobMap.dictionary, codeSession)
 	jobMap.Unlock()
 	fmt.Println(toJobQueue.que)
 	if len(toJobQueue.que) != 0 {
@@ -125,10 +137,13 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		toJobQueue.Lock()
 		job := toJobQueue.que[0]
 		toJobQueue.que = toJobQueue.que[1:]
-		fmt.Println("pass the job judge : " + job)
+		fmt.Println("pass the job to judge : " + job)
 		toJobQueue.Unlock()
-		passJobToJudge(job)
+		//pass to judge
+		go passJobToJudge(job)
 	}
+	fmt.Println("pass the result to front : " + bufStr)
+	go passResultToFront(bufStr)
 	con.Write([]byte("OK\n"))
 	con.Close()
 }
@@ -143,6 +158,15 @@ func passJobToJudge(arg string){
 	conn.Close()
 }
 
-func getsessionId(str string) (string) {
+func passResultToFront(arg string){
+	conn , err := net.Dial("tcp", FRONT_HOST_PORT)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	conn.Write([]byte(arg + "\n"))
+	conn.Close()
+}
+func getSessionId(str string) (string) {
 	return strings.Split(str, ",")[0]
 }

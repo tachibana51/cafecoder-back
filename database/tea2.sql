@@ -7,7 +7,7 @@ CREATE TABLE kakecoder.tea002score(
 CREATE TABLE kakecoder.tea002uploads (
     uid varchar(32),
     problem varchar(1),
-    code_session varchar(255),
+    codeSession varchar(255),
     user_id varchar(32),
     PRIMARY KEY (uid)
 );
