@@ -19,8 +19,8 @@ make
 
 # 概要  
 MAX_WORKERの長さのキューを使ってジャッジのジョブを管理する。  
-csvでデータをやり取りし、先頭にcodeSessionが入る。codeSessionにerrorが来るとエラー出力として判定する。
+csvでデータをやり取りし、先頭にcodeSessionが入る。codeSessionにerrorが来るとエラー出力として判定する。  
 デフォルトで、  
-frontからの通信をport 4649  　
-judgeからの通信をport 5963　　
+frontからの通信をport 4649  
+judgeからの通信をport 5963  
 で行う。
