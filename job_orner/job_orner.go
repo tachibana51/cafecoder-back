@@ -40,6 +40,9 @@ func main() {
 	jobMap := newMutexJobMap()
 	toJobQueue := newMutexJobQueue()
 	listenfromFront, err := net.Listen("tcp", "0.0.0.0:4649")
+	if err != nil {
+		fmt.Println("bind err")
+	}
 	listenfromJudge, err := net.Listen("tcp", "0.0.0.0:5963")
 	if err != nil {
 		fmt.Println("bind err")
@@ -67,8 +70,9 @@ func doFrontThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue)
 	//read csv arguments
 	dataBuf := make([]byte, 1024)
 	con.Read(dataBuf)
+	bufStr := string(dataBuf)
 	//read code session from csv
-	code_session := getsessionId(string(dataBuf))
+	code_session := getsessionId(bufStr)
 	//block race condition
 	jobMap.Lock()
 	now_worker := len(jobMap.dictionary) 
@@ -82,7 +86,7 @@ func doFrontThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue)
 		toJobQueue.Lock()
 		//add que
 		fmt.Println("add the job to que : " + code_session)
-		toJobQueue.que = append(toJobQueue.que, string(dataBuf))
+		toJobQueue.que = append(toJobQueue.que, bufStr)
 		fmt.Println(toJobQueue.que)
 		toJobQueue.Unlock()
 		con.Write([]byte("QUEUE\n"))
@@ -107,8 +111,9 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	//read csv result
 	dataBuf := make([]byte, 1024)
 	con.Read(dataBuf)
+	bufStr := string(dataBuf)
 	//read code session from csv
-	code_session := getsessionId(string(dataBuf))
+	code_session := getsessionId(bufStr)
 	//block race condition	
 	jobMap.Lock()
 	//remove from jobMap
