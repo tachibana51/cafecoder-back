@@ -10,7 +10,7 @@ import (
 const (
 	MAX_WORKER = 30
 	JUDGE_HOST_PORT = "localhost:8888"
-	FRONT_HOST_PORT = "localhost:80"
+	FRONT_HOST_PORT = "localhost:1234"
 )
 
 type mutexJobMap struct {
