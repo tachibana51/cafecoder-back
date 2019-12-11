@@ -1,9 +1,10 @@
 package values
 
 const (
-	MAX_WORKER = 30
-	JUDGE_HOST_PORT = "localhost:8888"
-	FRONT_HOST_PORT = "localhost:1234"
-	QUE_HOST_PORT = "localhost:4649"
-	QUEBACK_HOST_PORT = "localhost:5963"
+	MaxWorker = 30
+	JudgeHostPort = "localhost:8888"
+	FrontHostPort = "localhost:1234"
+	QueHostPort = "localhost:4649"
+	QuebackHostPort = "localhost:5963"
+	MySQLDBN = "root:root@/kakecoder"
 )

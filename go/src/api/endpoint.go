@@ -54,7 +54,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			//con job_order
-			con, err := net.Dial("tcp", values.QUE_HOST_PORT)
+			con, err := net.Dial("tcp", values.QueHostPort)
 			if err != nil {
 				fmt.Println(err)
 				return

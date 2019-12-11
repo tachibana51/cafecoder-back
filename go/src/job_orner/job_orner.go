@@ -9,9 +9,9 @@ import (
 )
 
 const (
-	MAX_WORKER = values.MAX_WORKER
-	JUDGE_HOST_PORT = values.JUDGE_HOST_PORT
-	FRONT_HOST_PORT = values.FRONT_HOST_PORT
+	MaxWorker = values.MaxWorker
+	JudgeHostPort = values.JudgeHostPort
+	FrontHostPort = values.FrontHostPort
 )
 
 type mutexJobMap struct {
@@ -81,7 +81,7 @@ func doFrontThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue)
 	//block race condition
 	jobMap.Lock()
 	now_worker := len(jobMap.dictionary)
-	if now_worker < MAX_WORKER {
+	if now_worker < MaxWorker {
 		//pass the job
 		fmt.Println("pass the job judge : " + bufStr)
 		con.Write([]byte("JUDGE\n"))
@@ -150,7 +150,7 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 }
 
 func passJobToJudge(arg string){
-	conn , err := net.Dial("tcp", JUDGE_HOST_PORT)
+	conn , err := net.Dial("tcp", JudgeHostPort)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -160,7 +160,7 @@ func passJobToJudge(arg string){
 }
 
 func passResultToFront(arg string){
-	conn , err := net.Dial("tcp", FRONT_HOST_PORT)
+	conn , err := net.Dial("tcp", FrontHostPort)
 	if err != nil {
 		fmt.Println(err)
 		return
