@@ -31,11 +31,3 @@ CREATE TABLE cafecoder.users
      role varchar(10) NOT NULL,
 	 PRIMARY KEY (uid)
 );
-CREATE TABLE cafecoder.contests
-	(contestid varchar(32) NOT NULL,
-	contestname varchar(32) NOT NULL,
-	indexpath varchar(255),
-	startdate datetime,
-	enddate datetime,
-	PRIMARY KEY (contestid)
-);
