@@ -79,17 +79,17 @@ func doFrontThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue)
 	codeSession := getSessionId(bufStr)
 	//block race condition
 	jobMap.Lock()
-	now_worker := len(jobMap.dictionary) 
+	now_worker := len(jobMap.dictionary)
 	if now_worker < MAX_WORKER {
 		//pass the job
-		fmt.Println("pass the job judge : " + codeSession)
+		fmt.Println("pass the job judge : " + bufStr)
 		con.Write([]byte("JUDGE\n"))
-		go passJobToJudge(string(dataBuf))
-		jobMap.dictionary[codeSession] = now_worker 
+		go passJobToJudge(bufStr)
+		jobMap.dictionary[codeSession] = now_worker + 1
 	}else{
 		toJobQueue.Lock()
 		//add que
-		fmt.Println("add the job to que : " + codeSession)
+		fmt.Println("add the job to que : " + bufStr)
 		toJobQueue.que = append(toJobQueue.que, bufStr)
 		fmt.Println(toJobQueue.que)
 		toJobQueue.Unlock()
@@ -124,7 +124,7 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		go passResultToFront(bufStr)
 		con.Write([]byte("OK\n"))
 		con.Close()
-		return 
+		return
 	}
 	//block race condition	
 	jobMap.Lock()
@@ -167,6 +167,7 @@ func passResultToFront(arg string){
 	conn.Write([]byte(arg + "\n"))
 	conn.Close()
 }
+
 func getSessionId(str string) (string) {
-	return strings.Split(str, ",")[0]
+	return strings.Split(str, ",")[1]
 }
