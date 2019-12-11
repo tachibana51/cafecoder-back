@@ -8,23 +8,24 @@ import(
 	"regexp"
 	"reflect"
 )
-//todo impl
+
 type MyCon struct {
 	DB *sql.DB
 	Regex *regexp.Regexp
 }
 
-func NewCon(con *MyCon) (*MyCon) {
+func NewCon() (*MyCon) {
 	db, err := sql.Open("mysql", values.MySQLDBN)
 	if err != nil {
 		panic(err.Error())
 	}
+	con := new(MyCon)
 	con.DB = db
-	con.Regex = regexp.MustCompile(`[^(a-zA-Z\._-=@)]+`)
+	con.Regex = regexp.MustCompile(`[^(0-9a-zA-Z\._@)]+`)
 	return con
 }
 
-func SafeSelect(con *MyCon, sql string, bindData... interface{} ) (*sql.Rows, error) {
+func (con MyCon) SafeSelect(sql string, bindData... interface{} ) (*sql.Rows, error) {
 	//prepare
 	for i, data := range bindData {
 		//string assert
@@ -36,6 +37,7 @@ func SafeSelect(con *MyCon, sql string, bindData... interface{} ) (*sql.Rows, er
 	//bind
 	bindSql := fmt.Sprintf(sql, bindData...)
 	//execute
+	fmt.Println(bindSql)
 	rows, err := con.DB.Query(bindSql)
 	if err != nil{
 		return nil, err
@@ -43,11 +45,16 @@ func SafeSelect(con *MyCon, sql string, bindData... interface{} ) (*sql.Rows, er
 	return rows, err
 }
 
-func PrepareExec(con *MyCon, sql string, bindData... interface{}) (bool, error){
+func (con MyCon) PrepareExec(sql string, bindData... interface{}) (bool, error){
 	stmt, err := con.DB.Prepare(sql)
 	if err != nil {
 		return false, err
 	}
 	stmt.Exec(bindData...)
 	return true, err
+}
+
+//dont forget
+func (con MyCon) Close(){
+	con.DB.Close()
 }
