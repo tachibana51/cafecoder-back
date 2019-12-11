@@ -5,12 +5,13 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"../values"
 )
 
 const (
-	MAX_WORKER = 30
-	JUDGE_HOST_PORT = "localhost:8888"
-	FRONT_HOST_PORT = "localhost:1234"
+	MAX_WORKER = values.MAX_WORKER
+	JUDGE_HOST_PORT = values.JUDGE_HOST_PORT
+	FRONT_HOST_PORT = values.FRONT_HOST_PORT
 )
 
 type mutexJobMap struct {
