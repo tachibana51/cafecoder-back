@@ -31,7 +31,7 @@ CREATE TABLE cafecoder.code_sessions(
     user_id varchar(32) NOT NULL,
     lang varchar(32) NOT NULL,
     upload_date datetime,
-    result varchar(8) DEFAULT 'WJ',
+    result varchar(8),
     PRIMARY KEY (id)
 );
 
