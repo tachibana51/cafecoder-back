@@ -18,7 +18,7 @@ type postCode struct {
 	UserId      string `json:"user_id"`
 	Language    string `json:"language"`
 	ContestId   string `json:"contest_id"`
-	Problem     string `json:"problem"`
+    Problem     string `json:"problem"`
 }
 
 type testcase struct {
