@@ -49,6 +49,18 @@ func (TrashScanner) Scan(interface{}) error {
     return nil
 }
 
+func readData(r **http.Request) ([]byte, error) {
+    body := make([]byte, 4096)
+    body, err := ioutil.ReadAll((*r).Body)
+    if err != nil {
+        fmt.Println(err)
+        return body, err
+    }
+    //read json
+    body = bytes.Trim(body, "\x00")
+    return body, err
+}
+
 func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
     switch r.Method {
     case "GET":
@@ -104,17 +116,6 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
     }
 }
 
-func readData(r **http.Request) ([]byte, error) {
-    body := make([]byte, 4096)
-    body, err := ioutil.ReadAll((*r).Body)
-    if err != nil {
-        fmt.Println(err)
-        return body, err
-    }
-    //read json
-    body = bytes.Trim(body, "\x00")
-    return body, err
-}
 
 func FuncWrapper(f interface{}, c *cafedb.MyCon) func(http.ResponseWriter, *http.Request) {
     function := f.(func(http.ResponseWriter, *http.Request, *cafedb.MyCon))
