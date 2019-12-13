@@ -27,7 +27,7 @@ CREATE TABLE cafecoder.problems(
 
 CREATE TABLE cafecoder.code_sessions(
     id varchar(32) NOT NULL,
-    problem_id varchar(1) NOT NULL,
+    problem_id varchar(32) NOT NULL,
     user_id varchar(32) NOT NULL,
     lang varchar(32) NOT NULL,
     upload_date datetime,
@@ -37,6 +37,7 @@ CREATE TABLE cafecoder.code_sessions(
 
 CREATE TABLE cafecoder.testcases(
     id varchar(32) NOT NULL, 
+    problem_id varchar(32)
     path varchar(1024) NOT NULL,
     PRIMARY KEY (id)
 );
