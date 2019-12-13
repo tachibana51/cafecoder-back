@@ -77,12 +77,13 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon)
         var res resGetResult
         rows.Next()
         rows.Scan(&res.CodeSession, &res.UserId, &res.ContestId, &res.Problem, &res.Lang, &res.Result)
-        formatBytes, err := json.Marshal(res)
+        //convert to Json
+        jsonBytes, err := json.Marshal(res)
         if err != nil {
             fmt.Println(err)
             return
         }
-        fmt.Fprintf(w, string(formatBytes))
+        fmt.Fprintf(w, string(jsonBytes))
 
     default:
         return
