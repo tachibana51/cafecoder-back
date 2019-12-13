@@ -37,7 +37,16 @@ CREATE TABLE cafecoder.code_sessions(
 
 CREATE TABLE cafecoder.testcases(
     id varchar(32) NOT NULL, 
-    problem_id varchar(32)
+    problem_id varchar(32) NOT NULL,
     path varchar(1024) NOT NULL,
     PRIMARY KEY (id)
 );
+
+CREATE TABLE cafecoder.results(
+    id varchar(32) NOT NULL,
+    session_id(32) NOT NULL,
+    testcase_id(32) NOT NULL,
+    result varchar(8),
+    time int,
+    PRIMARY KEY(id)
+)
