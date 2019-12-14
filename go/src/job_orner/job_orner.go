@@ -123,17 +123,17 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	dataBuf := make([]byte, 1024)
 	con.Read(dataBuf)
 	bufStr := string(dataBuf)
+	st := strings.Split(bufStr, "\n")
+	bufStr = st[0]
+	errStr := st[1]
 	//read code session from csv
 	codeSession := getSessionId(bufStr)
-	if codeSession == "error" {
-		fmt.Println("pass the error to front : " + bufStr)
-		sessionId := strings.Split(bufStr, ",")[1]
-		errorMes := strings.Split(bufStr, ",")[2]
-		sqlCon.PrepareExec("UPDATE testcase_results SET error=? WHERE id=?", errorMes, sessionId)
-		con.Write([]byte("OK\n"))
-		con.Close()
-		return
-	}
+	fmt.Println("pass the error to front : " + errStr)
+	sessionId := strings.Split(errStr, ",")[1]
+	errorMes := strings.Split(errStr, ",")[2]
+	sqlCon.PrepareExec("UPDATE code_sessions SET error=? WHERE id=?", errorMes, sessionId)
+	con.Write([]byte("OK\n"))
+	con.Close()
 	//block race condition
 	jobMap.Lock()
 	//remove from jobMap
@@ -153,10 +153,8 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	fmt.Println("pass the result to front : " + bufStr)
 	csv := strings.Split(bufStr, ",")
 	result := csv[3]
-	sessionId := csv[0]
 	sqlCon.PrepareExec("UPDATE code_sessions SET result=? WHERE id=?", result, sessionId)
-	csv = csv[5:]
-	for i := 0; i < len(csv)-1; i += 2 {
+	for i := 5; i < len(csv)-1; i += 2 {
 		id := generateSession()
 		caseResult := csv[i]
 		caseTime := csv[i+1]

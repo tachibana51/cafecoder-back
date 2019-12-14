@@ -5,10 +5,13 @@ import (
 	"../values"
 	"bytes"
 	"crypto/md5"
+	crand "crypto/rand"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"math"
+	"math/big"
 	"math/rand"
 	"net"
 	"net/http"
@@ -26,6 +29,7 @@ type testcase struct {
 type reqPostCode struct {
 	Code      string `json:"code"`
 	Username  string `json:"username"`
+	AuthToken string `json:"token"`
 	Problem   string `json:"problem"`
 	Language  string `json:"language"`
 	ContestId string `json:"contest_id"`
@@ -128,7 +132,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon)
 		//template for request
 		var jsonData reqGetResult
 		body, _ := readData(&r)
-		err := json.Unmarshal(body, jsonData)
+		err := json.Unmarshal(body, &jsonData)
 		//read data from db
 		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result  FROM contests, problems, users WHERE sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession)
 		if err != nil {
@@ -157,6 +161,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 	switch r.Method {
 	/*
 	   in
+	   	   Code        string `json:code`
 	       Username    string `json:"username"`
 	       Problem     string `json:"problem"`
 	       Language    string `json:"language"`
@@ -169,24 +174,40 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		//template for request
 		var jsonData reqPostCode
 		body, _ := readData(&r)
-		err := json.Unmarshal(body, jsonData)
+		err := json.Unmarshal(body, &jsonData)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		//read data from db
-		rows, err := sqlCon.SafeSelect("SELECT problems.id, users.id, code_sessions.lang , testcases.listpath FROM contests, problems, users, testases WHERE problems.contest_id = contests.id AND testcases.id = problems.testcase_id AND contests.id = '%s' AND problems.name = '%s'", jsonData.ContestId, jsonData.Problem)
+		rows, err := sqlCon.SafeSelect("SELECT users.id FROM users WHERE users.name = '%s'", jsonData.Username)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		rows.Next()
+		var userId string
+		rows.Scan(&userId)
+		if userId == "" {
+			return
+		}
+
+		rows, err = sqlCon.SafeSelect("SELECT problems.id,  testcases.listpath FROM contests, problems, users, testcases WHERE problems.contest_id = contests.id AND testcases.id = problems.testcase_id AND contests.id = '%s' AND problems.name = '%s'", jsonData.ContestId, jsonData.Problem)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		rows.Next()
 		var (
 			problemId    string
-			userId       string
 			lang         string
 			testcasePath string
 		)
-		rows.Scan(&problemId, &userId, &lang, &testcasePath)
+		lang = jsonData.Language
+		rows.Scan(&problemId, &testcasePath)
 		sessionId := generateSession()
 		//upload file
-		filename := "/submits/" + userId + "-" + sessionId
+		filename := "/submits/" + userId + "_" + sessionId
 		file, err := os.Create(fmt.Sprintf("./fileserver%s", filename))
 		if err != nil {
 			fmt.Println(err)
@@ -206,7 +227,8 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		con.Write([]byte(strings.Join(argStr, ",")))
 		con.Close()
 		//convert to Json
-		jsonBytes, err := json.Marshal(sessionId)
+		res := resPostCode{CodeSession: sessionId}
+		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -225,7 +247,7 @@ func testcaseHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCo
 		//template for request
 		var jsonData reqGetTestCase
 		body, _ := readData(&r)
-		err := json.Unmarshal(body, jsonData)
+		err := json.Unmarshal(body, &jsonData)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -264,7 +286,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		//template for request
 		var jsonData reqGetUser
 		body, _ := readData(&r)
-		err := json.Unmarshal(body, jsonData)
+		err := json.Unmarshal(body, &jsonData)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -278,7 +300,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		rows.Next()
 		var username string
 		rows.Scan(&username)
-		result := (username == "")
+		result := (username != "")
 		res := resGetUser{Result: result}
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
@@ -291,7 +313,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		//template for request
 		var jsonData reqPostUser
 		body, _ := readData(&r)
-		err := json.Unmarshal(body, jsonData)
+		err := json.Unmarshal(body, &jsonData)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -310,7 +332,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		userId := generateSession()
 		username := jsonData.Username
 		passwordHash := cafedb.GetHash(jsonData.Password)
-		sqlCon.PrepareExec("INSERT INTO users (id, name, password_hash, role) VALUES (?, ?, ?, user)", userId, username, passwordHash)
+		sqlCon.PrepareExec("INSERT INTO users (id, name, password_hash, role) VALUES (?, ?, ?, 'user')", userId, username, passwordHash)
 		//conver to json
 		res := resGetUser{Result: true}
 		jsonBytes, err := json.Marshal(res)
@@ -328,7 +350,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		//template for request
 		var jsonData reqPostAuth
 		body, _ := readData(&r)
-		err := json.Unmarshal(body, jsonData)
+		err := json.Unmarshal(body, &jsonData)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -360,6 +382,8 @@ func FuncWrapper(f interface{}, c *cafedb.MyCon) func(http.ResponseWriter, *http
 func generateSession() string {
 	b := make([]byte, 8)
 	h := md5.New()
+	seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
+	rand.Seed(seed.Int64())
 	rand.Read(b)
 	h.Write(b)
 	return hex.EncodeToString(h.Sum(nil))

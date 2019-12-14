@@ -49,9 +49,15 @@ func (con MyCon) SafeSelect(sql string, bindData ...interface{}) (*sql.Rows, err
 func (con MyCon) PrepareExec(sql string, bindData ...interface{}) (bool, error) {
 	stmt, err := con.DB.Prepare(sql)
 	if err != nil {
+		fmt.Println(err)
 		return false, err
 	}
-	stmt.Exec(bindData...)
+	_, err = stmt.Exec(bindData...)
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+	fmt.Println(sql)
 	return true, err
 }
 
