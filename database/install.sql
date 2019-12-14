@@ -1,3 +1,6 @@
+CREATE DATABASE cafecoder;
+CREATE USER 'cafecoder'@'localhost' IDENTIFIED BY 'password';
+GRANT ALL PRIVILEGES ON cafecoder.* to 'cafecoder'@'localhost';
 CREATE TABLE cafecoder.users( 
     id varchar(32) NOT NULL,
     name varchar(100) NOT NULL,
@@ -32,6 +35,7 @@ CREATE TABLE cafecoder.code_sessions(
     lang varchar(32) NOT NULL,
     upload_date datetime,
     result varchar(8), 
+    error varchar(1024),
     PRIMARY KEY (id)
 );
 
@@ -44,9 +48,9 @@ CREATE TABLE cafecoder.testcases(
 
 CREATE TABLE cafecoder.testcase_results(
     id varchar(32) NOT NULL,
-    session_id(32) NOT NULL,
+    session_id varchar(32) NOT NULL,
     name varchar(255) NOT NULL,
     result varchar(8),
-    time int,
+    time int(11),
     PRIMARY KEY (id)
-)
+);
