@@ -48,9 +48,9 @@ CREATE TABLE cafecoder.testcases(
 
 CREATE TABLE cafecoder.testcase_results(
     id varchar(32) NOT NULL,
-    session_id(32) NOT NULL,
+    session_id varchar(32) NOT NULL,
     name varchar(255) NOT NULL,
     result varchar(8),
-    time int,
+    time int(11),
     PRIMARY KEY (id)
 );
