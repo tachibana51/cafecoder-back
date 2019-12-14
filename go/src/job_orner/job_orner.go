@@ -1,8 +1,12 @@
 package main
 
 import (
+	"../cafedb"
 	"../values"
+	"crypto/md5"
+	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"net"
 	"strings"
 	"sync"
@@ -54,7 +58,7 @@ func main() {
 	}
 
 	wg.Add(1)
-	go fromFrontThread(&listenfromFront, jobMap, toJobQueue, sqlCon)
+	go fromFrontThread(&listenfromFront, jobMap, toJobQueue)
 	wg.Add(1)
 	go fromJudgeThread(&listenfromJudge, jobMap, toJobQueue, sqlCon)
 	wg.Wait()
@@ -152,7 +156,7 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	sessionId := csv[0]
 	sqlCon.PrepareExec("UPDATE code_sessions SET result=? WHERE id=?", result, sessionId)
 	csv = csv[5:]
-	for i := 0; i < len(csv-1); i += 2 {
+	for i := 0; i < len(csv)-1; i += 2 {
 		id := generateSession()
 		caseResult := csv[i]
 		caseTime := csv[i+1]

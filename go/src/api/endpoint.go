@@ -49,6 +49,8 @@ type resGetResult struct {
 	Result      string `json:"result"`
 }
 
+//GET /api/v1/contest
+
 //GET /api/v1/testcase
 type reqGetTestCase struct {
 	CodeSession string `json:"code_session"`
