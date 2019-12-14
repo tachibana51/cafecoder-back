@@ -76,6 +76,8 @@ func evenvListenerThread() {
 	http.HandleFunc("/api/v1/result", FuncWrapper(resultHandler, sqlCon))
 	http.HandleFunc("/api/v1/code", FuncWrapper(codeHandler, sqlCon))
 	http.HandleFunc("/api/v1/testcase", FuncWrapper(testcaseHandler, sqlCon))
+	//todo user
+	//todo contest
 	http.ListenAndServe(":8080", nil)
 }
 
