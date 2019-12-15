@@ -6,6 +6,7 @@ CREATE TABLE cafecoder.users(
     name varchar(100) NOT NULL,
     email varchar(255),
     password_hash varchar(64) NOT NULL,
+    auth_token varchar(64),
     role varchar(10) NOT NULL,
     rate int,
     PRIMARY KEY (id)

@@ -131,7 +131,6 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	errStr := st[1]
 	//read code session from csv
 	codeSession := getSessionId(bufStr)
-	fmt.Println("pass the error to front : " + errStr)
 	sessionId := strings.Split(errStr, ",")[1]
 	errorMes := strings.Split(errStr, ",")[2]
 	sqlCon.PrepareExec("UPDATE code_sessions SET error=? WHERE id=?", errorMes, sessionId)
@@ -153,7 +152,6 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		//pass to judge
 		go passJobToJudge(job)
 	}
-	fmt.Println("pass the result to front : " + bufStr)
 	csv := strings.Split(bufStr, ",")
 	result := csv[3]
 	sqlCon.PrepareExec("UPDATE code_sessions SET result=? WHERE id=?", result, sessionId)

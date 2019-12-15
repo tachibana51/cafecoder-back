@@ -29,7 +29,7 @@ type testcase struct {
 type reqPostCode struct {
 	Code      string `json:"code"`
 	Username  string `json:"username"`
-	AuthToken string `json:"token"`
+	AuthToken string `json:"auth_token"`
 	Problem   string `json:"problem"`
 	Language  string `json:"language"`
 	ContestId string `json:"contest_id"`
@@ -42,6 +42,7 @@ type resPostCode struct {
 //GET /api/v1/result
 type reqGetResult struct {
 	CodeSession string `json:"code_session"`
+	AuthToken   string `json:"auth_token"`
 }
 
 type resGetResult struct {
@@ -79,7 +80,8 @@ type reqPostAuth struct {
 }
 
 type resPostAuth struct {
-	Result bool `json:"result"`
+	Result bool   `json:"result"`
+	Token  string `json:"auth_token"`
 }
 
 //GET /api/v1/contest
@@ -91,7 +93,7 @@ type resGetContest struct {
 	ContestName string `json:"contest_name"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
-	isOpen      bool   `json:"is_open"`
+	IsOpen      bool   `json:"is_open"`
 }
 
 //GET /api/v1/testcase
@@ -120,7 +122,7 @@ func evenvListenerThread() {
 	http.HandleFunc("/api/v1/code", FuncWrapper(codeHandler, sqlCon))
 	http.HandleFunc("/api/v1/testcase", FuncWrapper(testcaseHandler, sqlCon))
 	http.HandleFunc("/api/v1/user", FuncWrapper(userHandler, sqlCon))
-	//http.HandleFunc("/api/v1/contest", FuncWrapper(contestHandler, sqlCon))
+	http.HandleFunc("/api/v1/contest", FuncWrapper(contestHandler, sqlCon))
 	http.HandleFunc("/api/v1/auth", FuncWrapper(authHandler, sqlCon))
 	http.ListenAndServe(":8080", nil)
 }
@@ -180,7 +182,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 			return
 		}
 		//read data from db
-		rows, err := sqlCon.SafeSelect("SELECT users.id FROM users WHERE users.name = '%s'", jsonData.Username)
+		rows, err := sqlCon.SafeSelect("SELECT users.id FROM users WHERE users.name = '%s' AND users.auth_token = '%s'", jsonData.Username, jsonData.AuthToken)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -345,6 +347,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 	}
 }
 
+//api/v1/token
 func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 	switch r.Method {
 	case "POST":
@@ -356,6 +359,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 			fmt.Println(err)
 			return
 		}
+		//auth
 		hash := cafedb.GetHash(jsonData.Password)
 		rows, err := sqlCon.SafeSelect("SELECT users.id FROM users WHERE users.name = '%s' AND users.password_hash = '%s'", jsonData.Username, hash)
 		if err != nil {
@@ -363,9 +367,14 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 			return
 		}
 		var res resPostAuth
-		var userid string
-		rows.Scan(&userid)
-		res.Result = (userid != "")
+		var userId string
+		rows.Scan(&userId)
+		res.Result = (userId != "")
+		res.Token = GetHash(generateSession())
+		//set token
+		if res.Result {
+			sqlCon.PrepareExec("UPDATE users SET auth_token=? WHERE id=?", res.Token, userId)
+		}
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
@@ -374,6 +383,40 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		fmt.Fprintf(w, string(jsonBytes))
 	}
 
+}
+
+//GET /api/v1/contest
+func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
+	switch r.Method {
+	case "GET":
+		var jsonData reqGetContest
+		body, _ := readData(&r)
+		err := json.Unmarshal(body, &jsonData)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		//get db
+		rows, err := sqlCon.SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		var contestName string
+		var res resGetContest
+		rows.Scan(&contestName)
+		res.ContestName = contestName
+		rows, err = sqlCon.SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND NOW() BETWEEN contests.start_time AND contests.end_time", jsonData.ContestId)
+		rows.Scan(&contestName)
+		res.IsOpen = (contestName != "")
+		//convert to json
+		jsonBytes, err := json.Marshal(res)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Fprintf(w, string(jsonBytes))
+	}
 }
 func FuncWrapper(f interface{}, c *cafedb.MyCon) func(http.ResponseWriter, *http.Request) {
 	function := f.(func(http.ResponseWriter, *http.Request, *cafedb.MyCon))
