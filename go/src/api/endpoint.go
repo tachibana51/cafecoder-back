@@ -192,7 +192,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 			return
 		}
 
-		rows, err = sqlCon.SafeSelect("SELECT problems.id,  testcases.listpath FROM contests, problems, users, testcases WHERE problems.contest_id = contests.id AND testcases.id = problems.testcase_id AND contests.id = '%s' AND problems.name = '%s'", jsonData.ContestId, jsonData.Problem)
+		rows, err = sqlCon.SafeSelect("SELECT problems.id, problems.point , testcases.listpath FROM contests, problems, users, testcases WHERE problems.contest_id = contests.id AND testcases.id = problems.testcase_id AND contests.id = '%s' AND problems.name = '%s'", jsonData.ContestId, jsonData.Problem)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -201,10 +201,11 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		var (
 			problemId    string
 			lang         string
+			point        int
 			testcasePath string
 		)
 		lang = jsonData.Language
-		rows.Scan(&problemId, &testcasePath)
+		rows.Scan(&problemId, &point, &testcasePath)
 		sessionId := generateSession()
 		//upload file
 		filename := "/submits/" + userId + "_" + sessionId
@@ -223,7 +224,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 			fmt.Println(err)
 			return
 		}
-		argStr := []string{"dummy", sessionId, filename, lang, testcasePath, "point"}
+		argStr := []string{"dummy", sessionId, filename, lang, testcasePath, fmt.Sprint(point)}
 		con.Write([]byte(strings.Join(argStr, ",")))
 		con.Close()
 		//convert to Json

@@ -4,8 +4,11 @@ import (
 	"../cafedb"
 	"../values"
 	"crypto/md5"
+	crand "crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"math"
+	"math/big"
 	"math/rand"
 	"net"
 	"strings"
@@ -191,6 +194,8 @@ func getSessionId(str string) string {
 func generateSession() string {
 	b := make([]byte, 8)
 	h := md5.New()
+	seed, _ := crand.Int(crand.Reader, big.NewInt(math.MaxInt64))
+	rand.Seed(seed.Int64())
 	rand.Read(b)
 	h.Write(b)
 	return hex.EncodeToString(h.Sum(nil))
