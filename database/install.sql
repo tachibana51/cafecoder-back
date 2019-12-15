@@ -6,6 +6,7 @@ CREATE TABLE cafecoder.users(
     name varchar(100) NOT NULL,
     email varchar(255),
     password_hash varchar(64) NOT NULL,
+    auth_token varchar(64),
     role varchar(10) NOT NULL,
     rate int,
     PRIMARY KEY (id)
@@ -21,7 +22,7 @@ CREATE TABLE cafecoder.contests(
 
 CREATE TABLE cafecoder.problems(
     id varchar(32) NOT NULL,
-    contest_id varchar(4) NOT NULL,
+    contest_id varchar(32) NOT NULL,
     name varchar(4) NOT NULL,
     point int,
     testcase_id varchar(32),
