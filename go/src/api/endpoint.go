@@ -242,7 +242,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		}
 		file.Write([]byte(jsonData.Code))
 		file.Close()
-		sqlCon.PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, upload_date) VALUES(?, ?, ?, ?, NOW())", sessionId, problemId, userId, lang)
+		sqlCon.PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, result,upload_date) VALUES(?, ?, ?, ?, 'WJ', NOW())", sessionId, problemId, userId, lang)
 
 		//con job_order
 		con, err := net.Dial("tcp", values.QueHostPort)
