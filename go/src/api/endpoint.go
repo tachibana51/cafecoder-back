@@ -105,6 +105,29 @@ type resGetTestCase struct {
 	Testcases []testcase `json:"testcases"`
 }
 
+//GET /api/v1/ranking
+type firstAC struct {
+	ProblemName string `json:"problm_ename"`
+	SubmitId    string `json:"submit_id"`
+	SubmitTime  string `json:"submit_ime"`
+	Point       int    `json:"point"`
+}
+
+type contestResult struct {
+	Rank     int       `json:"rank"`
+	Username string    `json:"username"`
+	Submits  []firstAC `json:"submits"`
+	Point    int       `json:"point"`
+}
+
+type reqGetRanking struct {
+	ContestId string `json:"contest_id"`
+}
+
+type resGetRanking struct {
+	Ranking []contestResult `json:ranking`
+}
+
 type TrashScanner struct{}
 
 func (TrashScanner) Scan(interface{}) error {
@@ -124,6 +147,7 @@ func evenvListenerThread() {
 	http.HandleFunc("/api/v1/user", FuncWrapper(userHandler, sqlCon))
 	http.HandleFunc("/api/v1/contest", FuncWrapper(contestHandler, sqlCon))
 	http.HandleFunc("/api/v1/auth", FuncWrapper(authHandler, sqlCon))
+	http.HandleFunc("/api/v1/ranking", FuncWrapper(rankingHandler, sqlCon))
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -328,6 +352,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 			return
 		}
 		var userid string
+		rows.Next()
 		rows.Scan(&userid)
 		if userid != "" {
 			return
@@ -368,6 +393,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		}
 		var res resPostAuth
 		var userId string
+		rows.Next()
 		rows.Scan(&userId)
 		res.Result = (userId != "")
 		res.Token = cafedb.GetHash(generateSession())
@@ -404,13 +430,79 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 		}
 		var contestName string
 		var res resGetContest
+		rows.Next()
 		rows.Scan(&contestName)
 		res.ContestName = contestName
-		rows, err = sqlCon.SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND NOW() BETWEEN contests.start_time AND contests.end_time", jsonData.ContestId)
+		rows, err = sqlCon.SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND NOW() > contests.start_time", jsonData.ContestId)
 		rows.Scan(&contestName)
 		res.IsOpen = (contestName != "")
 		//convert to json
 		jsonBytes, err := json.Marshal(res)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Fprintf(w, string(jsonBytes))
+	}
+}
+
+func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
+	switch r.Method {
+	case "GET":
+		var jsonData reqGetRanking
+		body, _ := readData(&r)
+		err := json.Unmarshal(body, &jsonData)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		//get first ACs
+		// name sessionid date point
+		var result []contestResult
+		var acs []firstAC
+		var userIds []string
+		var userNames []string
+		_, err = sqlCon.SafeSelect("CREATE OR REPLACE VIEW cafecoder.%s AS SELECT users.id userid, problems.name problem, (SELECT code_sessions.id FROM code_sessions WHERE code_sessions.problem_id=problems.id AND problems.name = problem) sessionid, (SELECT code_sessions.upload_date FROM code_sessions WHERE code_sessions.id=sessionid) upload_date,  problems.point point, SUM(problems.point) sumpoint, code_sessions.result FROM contests, problems, code_sessions, users WHERE contests.id = problems.id AND users.id = code_sessions.user_id AND problems.contest_id = '%s' AND code_sessions.problem_id = problems.id AND (code_sessions.upload_date BETWEEN contests.start_time AND contests.end_time) AND code_sessions.result = 'AC' GROUP BY problems.id, users.id HAVING upload_date= MIN(upload_date) ORDER BY sumpoint DESC, upload_date ASC", jsonData.ContestId, jsonData.ContestId)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+
+		rows, err := sqlCon.SafeSelect("SELECT userid name FROM cafecoder.%s, users WHERE userid = users.id", jsonData.ContestId)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		var userId string
+		var userName string
+		for rows.Next() {
+			rows.Scan(&userId, &userName)
+			userIds = append(userIds, userId)
+			userNames = append(userNames, userName)
+		}
+
+		for i, userid := range userIds {
+			rows, err := sqlCon.SafeSelect("SELECT problem, sessionid, upload_date, point FROM cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND users.id = cafecoder.%s.userid", jsonData.ContestId, userid, jsonData.ContestId)
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			j := 0
+			sumOfPoint := 0
+			for rows.Next() {
+				acs = append(acs, *new(firstAC))
+				rows.Scan(&acs[j].ProblemName, &acs[j].SubmitId, &acs[j].SubmitTime, &acs[j].Point)
+				sumOfPoint += acs[j].Point
+				j += 1
+			}
+			result = append(result, *new(contestResult))
+			result[i].Rank = i
+			result[i].Username = userNames[i]
+			result[i].Submits = acs
+			result[i].Point = sumOfPoint
+		}
+		//convert to json
+		jsonBytes, err := json.Marshal(result)
 		if err != nil {
 			fmt.Println(err)
 			return

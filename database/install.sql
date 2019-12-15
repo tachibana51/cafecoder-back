@@ -22,7 +22,7 @@ CREATE TABLE cafecoder.contests(
 
 CREATE TABLE cafecoder.problems(
     id varchar(32) NOT NULL,
-    contest_id varchar(4) NOT NULL,
+    contest_id varchar(32) NOT NULL,
     name varchar(4) NOT NULL,
     point int,
     testcase_id varchar(32),
