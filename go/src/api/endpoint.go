@@ -370,7 +370,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		var userId string
 		rows.Scan(&userId)
 		res.Result = (userId != "")
-		res.Token = GetHash(generateSession())
+		res.Token = cafedb.GetHash(generateSession())
 		//set token
 		if res.Result {
 			sqlCon.PrepareExec("UPDATE users SET auth_token=? WHERE id=?", res.Token, userId)
