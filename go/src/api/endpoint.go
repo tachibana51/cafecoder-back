@@ -234,8 +234,20 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		rows.Scan(&problemId, &point, &testcasePath)
 		sessionId := generateSession()
 		//upload file
+        /*
 		filename := "/submits/" + userId + "_" + sessionId
 		file, err := os.Create(fmt.Sprintf("./fileserver%s", filename))
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		file.Write([]byte(jsonData.Code))
+		file.Close()
+        */
+        //uploadfiletest
+
+		filename := "/home/akane/cafe/cafecoder-back/fileserver/submits/" + userId + "_" + sessionId
+		file, err := os.Create(fmt.Sprintf("%s", filename))
 		if err != nil {
 			fmt.Println(err)
 			return
