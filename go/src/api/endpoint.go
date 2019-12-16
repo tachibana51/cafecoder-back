@@ -3,6 +3,7 @@ package main
 import (
 	"../cafedb"
     "encoding/base64"
+    "io"
 	"../values"
 	"bytes"
 	"crypto/md5"
@@ -13,7 +14,8 @@ import (
 	"io/ioutil"
 	"math"
 	"math/big"
-	"math/rand"
+    "archive/tar"
+    "math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -254,19 +256,30 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
         //uploadfiletest
 
         dir , _ := os.Getwd()
-		filename := dir + "/home/akane/cafe/cafecoder-back/fileserver/submits/" + userId + "_" + sessionId
+		filename := dir + "/fileserver/submits/" + userId + "_" + sessionId
 		file, err := os.Create(fmt.Sprintf("%s", filename))
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
         decodedCode, err := base64.StdEncoding.DecodeString(jsonData.Code)
+		file.Write([]byte(decodedCode))
+		file.Close()
+        tarfile, err := os.Create(filename)
+        defer tarfile.Close()
+        var fileWriter io.WriteCloser = tarfile
+        tarfileWriter := tar.NewWriter(fileWriter)
+        defer tarfileWriter.Close()
+        file , _  = os.Open(filename)
+        defer file.Close()
+        header := new(tar.Header)
+        header.Name = file.Name()
         if err != nil {
 			fmt.Println(err)
 			return
 		}
-		file.Write([]byte(decodedCode))
-		file.Close()
+        tarfileWriter.WriteHeader(header)
+        _, err = io.Copy(tarfileWriter, file)
 		sqlCon.PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, result,upload_date) VALUES(?, ?, ?, ?, 'WJ', NOW())", sessionId, problemId, userId, lang)
 
 		//con job_order
