@@ -2,6 +2,7 @@ package main
 
 import (
 	"../cafedb"
+    "encoding/base64"
 	"../values"
 	"bytes"
 	"crypto/md5"
@@ -38,7 +39,13 @@ type reqPostCode struct {
 type resPostCode struct {
 	CodeSession string `json:"code_session"`
 }
-
+//GET /api/v1/code
+type reqGetCode struct {
+	CodeSession string `json:"code_session"`
+}
+type resGetCode struct {
+	Code string `json:"code"`
+}
 //GET /api/v1/result
 type reqGetResult struct {
 	CodeSession string `json:"code_session"`
@@ -246,13 +253,19 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
         */
         //uploadfiletest
 
-		filename := "/home/akane/cafe/cafecoder-back/fileserver/submits/" + userId + "_" + sessionId
+        dir , _ := os.Getwd()
+		filename := dir + "/home/akane/cafe/cafecoder-back/fileserver/submits/" + userId + "_" + sessionId
 		file, err := os.Create(fmt.Sprintf("%s", filename))
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		file.Write([]byte(jsonData.Code))
+        decodedCode, err := base64.StdEncoding.DecodeString(jsonData.Code)
+        if err != nil {
+			fmt.Println(err)
+			return
+		}
+		file.Write([]byte(decodedCode))
 		file.Close()
 		sqlCon.PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, result,upload_date) VALUES(?, ?, ?, ?, 'WJ', NOW())", sessionId, problemId, userId, lang)
 
@@ -274,8 +287,52 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		}
 		fmt.Fprintf(w, string(jsonBytes))
 
-	default:
-		return
+	case "GET":
+        //template for request
+		var jsonData reqGetCode
+		body, _ := readData(&r)
+		err := json.Unmarshal(body, &jsonData)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		//read data from db
+		rows, err := sqlCon.SafeSelect("SELECT code_sessions.id, users.id FROM code_sessions, users WHERE code_sessions.user_id = users.id AND code_sessions.id = '%s'", jsonData.CodeSession)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		rows.Next()
+		var sessionId string
+		var userId string
+		rows.Scan(&sessionId,&userId)
+		if sessionId == "" {
+			return
+		}
+        dir , _ := os.Getwd()
+		filename := dir +"/fileserver/submits/" + userId + "_" + sessionId
+        file , err := os.Open(filename)
+        defer file.Close()
+        if err != nil {
+			fmt.Println(err)
+			return
+		}
+        b, err := ioutil.ReadAll(file)
+        if err != nil {
+			fmt.Println(err)
+			return
+		}
+        encodedCode := base64.StdEncoding.EncodeToString(b)
+        //convert to Json
+        res := resGetCode{Code: encodedCode}
+		jsonBytes, err := json.Marshal(res)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Fprintf(w, string(jsonBytes))
+
+
 	}
 }
 
