@@ -2,20 +2,18 @@ package main
 
 import (
 	"../cafedb"
-    "encoding/base64"
-    "io"
 	"../values"
 	"bytes"
 	"crypto/md5"
 	crand "crypto/rand"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"math"
 	"math/big"
-    "archive/tar"
-    "math/rand"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -41,6 +39,7 @@ type reqPostCode struct {
 type resPostCode struct {
 	CodeSession string `json:"code_session"`
 }
+
 //GET /api/v1/code
 type reqGetCode struct {
 	CodeSession string `json:"code_session"`
@@ -48,6 +47,7 @@ type reqGetCode struct {
 type resGetCode struct {
 	Code string `json:"code"`
 }
+
 //GET /api/v1/result
 type reqGetResult struct {
 	CodeSession string `json:"code_session"`
@@ -169,7 +169,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon)
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
 		//read data from db
-		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result  FROM contests, problems, users WHERE sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession)
+		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result  FROM contests, problems, users, code_sessions WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -243,43 +243,28 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		rows.Scan(&problemId, &point, &testcasePath)
 		sessionId := generateSession()
 		//upload file
-        /*
-		filename := "/submits/" + userId + "_" + sessionId
-		file, err := os.Create(fmt.Sprintf("./fileserver%s", filename))
-		if err != nil {
-			fmt.Println(err)
-			return
-		}
-		file.Write([]byte(jsonData.Code))
-		file.Close()
-        */
-        //uploadfiletest
+		/*
+			filename := "/submits/" + userId + "_" + sessionId
+			file, err := os.Create(fmt.Sprintf("./fileserver%s", filename))
+			if err != nil {
+				fmt.Println(err)
+				return
+			}
+			file.Write([]byte(jsonData.Code))
+			file.Close()
+		*/
+		//uploadfiletest
 
-        dir , _ := os.Getwd()
+		dir, _ := os.Getwd()
 		filename := dir + "/fileserver/submits/" + userId + "_" + sessionId
 		file, err := os.Create(fmt.Sprintf("%s", filename))
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-        decodedCode, err := base64.StdEncoding.DecodeString(jsonData.Code)
+		decodedCode, err := base64.StdEncoding.DecodeString(jsonData.Code)
 		file.Write([]byte(decodedCode))
 		file.Close()
-        tarfile, err := os.Create(filename)
-        defer tarfile.Close()
-        var fileWriter io.WriteCloser = tarfile
-        tarfileWriter := tar.NewWriter(fileWriter)
-        defer tarfileWriter.Close()
-        file , _  = os.Open(filename)
-        defer file.Close()
-        header := new(tar.Header)
-        header.Name = file.Name()
-        if err != nil {
-			fmt.Println(err)
-			return
-		}
-        tarfileWriter.WriteHeader(header)
-        _, err = io.Copy(tarfileWriter, file)
 		sqlCon.PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, result,upload_date) VALUES(?, ?, ?, ?, 'WJ', NOW())", sessionId, problemId, userId, lang)
 
 		//con job_order
@@ -301,7 +286,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		fmt.Fprintf(w, string(jsonBytes))
 
 	case "GET":
-        //template for request
+		//template for request
 		var jsonData reqGetCode
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
@@ -318,33 +303,32 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		rows.Next()
 		var sessionId string
 		var userId string
-		rows.Scan(&sessionId,&userId)
+		rows.Scan(&sessionId, &userId)
 		if sessionId == "" {
 			return
 		}
-        dir , _ := os.Getwd()
-		filename := dir +"/fileserver/submits/" + userId + "_" + sessionId
-        file , err := os.Open(filename)
-        defer file.Close()
-        if err != nil {
+		dir, _ := os.Getwd()
+		filename := dir + "/fileserver/submits/" + userId + "_" + sessionId
+		file, err := os.Open(filename)
+		defer file.Close()
+		if err != nil {
 			fmt.Println(err)
 			return
 		}
-        b, err := ioutil.ReadAll(file)
-        if err != nil {
+		b, err := ioutil.ReadAll(file)
+		if err != nil {
 			fmt.Println(err)
 			return
 		}
-        encodedCode := base64.StdEncoding.EncodeToString(b)
-        //convert to Json
-        res := resGetCode{Code: encodedCode}
+		encodedCode := base64.StdEncoding.EncodeToString(b)
+		//convert to Json
+		res := resGetCode{Code: encodedCode}
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		fmt.Fprintf(w, string(jsonBytes))
-
 
 	}
 }
@@ -362,24 +346,21 @@ func testcaseHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCo
 			return
 		}
 		//read results from db
-		rows, err := sqlCon.SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_rsults WHERE testcases_result.code_session='%s' AND test", jsonData.CodeSession)
+		rows, err := sqlCon.SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_results WHERE testcase_results.session_id='%s'", jsonData.CodeSession)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		caseList := make([]testcase, 100)
-		i := 0
+		caseList := make([]testcase, 0)
 		for rows.Next() {
-			if i >= 100 {
-				return
-			}
 			var t testcase
 			rows.Scan(&t.CaseName, &t.Result, &t.Runtime)
-			caseList[i] = t
-			i += 1
+			caseList = append(caseList, t)
 		}
+		var res resGetTestCase
+		res.Testcases = caseList
 		//convert to Json
-		jsonBytes, err := json.Marshal(caseList[:i])
+		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
 			return

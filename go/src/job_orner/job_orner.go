@@ -11,6 +11,7 @@ import (
 	"math/big"
 	"math/rand"
 	"net"
+	"strconv"
 	"strings"
 	"sync"
 )
@@ -131,11 +132,11 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	errStr := st[1]
 	//read code session from csv
 	codeSession := getSessionId(bufStr)
-    if (len(strings.Split(errStr,",")) >= 2) {
-        sessionId := strings.Split(errStr, ",")[1]
-        errorMes := strings.Split(errStr, ",")[2]
-        sqlCon.PrepareExec("UPDATE code_sessions SET error=? WHERE id=?", errorMes, sessionId)
-    }
+	if len(strings.Split(errStr, ",")) >= 2 {
+		sessionId := strings.Split(errStr, ",")[1]
+		errorMes := strings.Split(errStr, ",")[2]
+		sqlCon.PrepareExec("UPDATE code_sessions SET error=? WHERE id=?", errorMes, sessionId)
+	}
 	con.Write([]byte("OK\n"))
 	con.Close()
 	//block race condition
@@ -156,11 +157,14 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 	}
 	csv := strings.Split(bufStr, ",")
 	result := csv[3]
-	sqlCon.PrepareExec("UPDATE code_sessions SET result=? WHERE id=?", result, codeSession)
-	for i := 5; i < len(csv)-1; i += 2 {
+	sqlCon.PrepareExec("UPDATE code_sessions SET result=? WHERE code_sessions.id=?", result, codeSession)
+	for i := 5; i < len(csv)-2; i += 2 {
 		id := generateSession()
 		caseResult := csv[i]
-		caseTime := csv[i+1]
+		if caseResult == "error" {
+			break
+		}
+		caseTime, _ := strconv.Atoi(csv[i+1])
 		sqlCon.PrepareExec("INSERT INTO testcase_results (id, session_id, name, result, time) VALUES(?, ?, ?, ?, ?)", id, codeSession, i, caseResult, caseTime)
 	}
 	con.Write([]byte("OK\n"))
