@@ -61,6 +61,8 @@ type resGetResult struct {
 	Point       string `json:"point"`
 	Lang        string `json:"language"`
 	Result      string `json:"result"`
+	MaxRuntime  int    `json:"max_runtime"`
+    ErrorMess   string `json:"error"`
 }
 
 //GET /api/v1/user
@@ -168,15 +170,15 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon)
 		var jsonData reqGetResult
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
-		//read data from db
-		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result  FROM contests, problems, users, code_sessions WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession)
+        //read data from db
+		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession,jsonData.CodeSession)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		var res resGetResult
 		rows.Next()
-		rows.Scan(&res.Username, &res.ContestName, &res.Problem, &res.Point, &res.Lang, &res.Result)
+		rows.Scan(&res.Username, &res.ContestName, &res.Problem, &res.Point, &res.Lang, &res.Result, &res.ErrorMess, &res.MaxRuntime)
 		//convert to Json
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
