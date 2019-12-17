@@ -365,7 +365,7 @@ func submitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 			return
 		}
 		//read results from db
-		rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems, contests WHERE users.name='%s' AND code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id='%s'", jsonData.Username, jsonData.ContestId)
+		rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems, contests WHERE users.name='%s' AND code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id='%s' ORDER BY code_sessions.upload_date DESC", jsonData.Username, jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -401,7 +401,7 @@ func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.My
 			return
 		}
 		//get from db
-		rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id = '%s'", jsonData.ContestId)
+		rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id = '%s' ORDER BY code_sessions.upload_date DESC", jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
