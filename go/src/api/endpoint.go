@@ -274,8 +274,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		lang = jsonData.Language
 		rows.Scan(&problemId, &point, &testcasePath)
 		sessionId := generateSession()
-		dir, _ := os.Getwd()
-		filename := dir + "/fileserver/submits/" + userId + "_" + sessionId
+		filename := "./fileserver/submits/" + userId + "_" + sessionId
 		file, err := os.Create(fmt.Sprintf("%s", filename))
 		if err != nil {
 			fmt.Println(err)
@@ -326,8 +325,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 		if sessionId == "" {
 			return
 		}
-		dir, _ := os.Getwd()
-		filename := dir + "/fileserver/submits/" + userId + "_" + sessionId
+		filename := "./fileserver/submits/" + userId + "_" + sessionId
 		file, err := os.Open(filename)
 		defer file.Close()
 		if err != nil {
