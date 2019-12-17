@@ -613,15 +613,12 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 		//get first ACs
 		// name sessionid date point
 		var result []contestResult
-		var acs []firstAC
-		var userIds []string
-		var userNames []string
 		_, err = sqlCon.SafeSelect(`CREATE OR REPLACE VIEW cafecoder.%s AS SELECT 
 		users.id userid,
 		(SELECT u.name FROM users u WHERE u.id=userid) username,
 		problems.name problem, 
-		(SELECT code_sessions.id FROM code_sessions, problems WHERE code_sessions.problem_id=problems.id AND problems.contest_id='%s' AND code_sessions.result='AC' 
-		ORDER BY code_sessions.upload_date AND code_sessions.user_id = userid ASC LIMIT 0,1) sessionid, 
+		(SELECT code_sessions.id FROM code_sessions, problems WHERE code_sessions.problem_id=problems.id AND code_sessions.user_id = userid AND problems.contest_id='%s' AND code_sessions.result='AC' 
+		ORDER BY code_sessions.upload_date ASC LIMIT 0,1) sessionid, 
 		(SELECT code_sessions.upload_date FROM code_sessions WHERE code_sessions.id=sessionid) upload_date,
 		(SELECT problems.point FROM problems WHERE problems.name=problem AND problems.contest_id='%s') point
 		FROM contests, problems, code_sessions, users  
@@ -633,35 +630,28 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 			return
 		}
 
-		rows, err := sqlCon.SafeSelect("SELECT userid, username  FROM cafecoder.%s", jsonData.ContestId)
+		rows, err := sqlCon.SafeSelect("SELECT userid uid, username,  (SELECT SUM(point) FROM cafecoder.%s WHERE userid=uid GROUP BY userid) sumpoint  FROM cafecoder.%s ORDER BY sumpoint DESC , upload_date ASC", jsonData.ContestId, jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
-		var userId string
+		var userid string
 		var userName string
-		for rows.Next() {
-			rows.Scan(&userId, &userName)
-			userIds = append(userIds, userId)
-			userNames = append(userNames, userName)
-		}
-
-		for i, userid := range userIds {
-			rows, err := sqlCon.SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time) time , point , (SELECT SUM(point) FROM cafecoder.%s WHERE userid='%s' GROUP BY userid) sumpoint FROM contests, users, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND users.id = cafecoder.%s.userid AND contests.id = '%s' ORDER BY sumpoint DESC , time ASC", jsonData.ContestId, userid, jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId, jsonData.ContestId)
+		var point int
+		for i := 1; rows.Next(); i++ {
+			rows.Scan(&userid, &userName, &point)
+			rowt, err := sqlCon.SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time) time , point FROM contests, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND contests.id = '%s'", jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
-			j := 0
-			result = append(result, *new(contestResult))
-			for rows.Next() {
-				acs = append(acs, *new(firstAC))
-				rows.Scan(&acs[j].ProblemName, &acs[j].SubmitId, &acs[j].SubmitTime, &acs[j].Point, &result[i].Point)
-				j += 1
+			var acs []firstAC
+			for rowt.Next() {
+				fac := new(firstAC)
+				rowt.Scan(&fac.ProblemName, &fac.SubmitId, &fac.SubmitTime, &fac.Point)
+				acs = append(acs, *fac)
 			}
-			result[i].Rank = i
-			result[i].Username = userNames[i]
-			result[i].Submits = acs
+			result = append(result, contestResult{Point: point, Submits: acs, Rank: i, Username: userName})
 		}
 		//convert to json
 		jsonBytes, err := json.Marshal(result)
