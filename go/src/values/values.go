@@ -7,6 +7,6 @@ const (
 	QueHostPort        = "localhost:4649"
 	QuebackHostPort    = "localhost:5963"
 	FileServerHostPort = "localhost:4444"
-	MySQLDBN           = "root:root@/cafecoder"
+	MySQLDBN           = "cafecoder:password@/cafecoder"
 	Salt               = "SALLLLLLLLLLTTTTTT"
 )

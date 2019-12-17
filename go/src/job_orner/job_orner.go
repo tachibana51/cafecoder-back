@@ -2,6 +2,7 @@ package main
 
 import (
 	"../cafedb"
+    "encoding/json"
 	"../values"
 	"crypto/md5"
 	crand "crypto/rand"
@@ -20,6 +21,24 @@ const (
 	JudgeHostPort = values.JudgeHostPort
 	FrontHostPort = values.FrontHostPort
 )
+
+type overAllResultJSON struct {
+	SessionID     string            `json:"sessionID"`
+	OverAllTime   int64             `json:"time"`
+	OverAllResult string            `json:"result"`
+	OverAllScore  int               `json:"score"`
+	ErrMessage string `json:"errMessage"`
+	Testcases      []testcaseJSON `json:"testcases"`
+}
+
+type testcaseJSON struct {
+	Name       string `json:"name"`
+	Result     string `json:"result"`
+	MemoryUsed int64  `json:"memory_used"`
+	Time       int64  `json:"time"`
+}
+
+
 
 type mutexJobMap struct {
 	sync.Mutex
@@ -123,19 +142,12 @@ func fromJudgeThread(listenfromJudge *net.Listener, jobMap *mutexJobMap, toJobQu
 
 func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue, sqlCon *cafedb.MyCon) {
 	//read csv result
-	dataBuf := make([]byte, 1024)
-	con.Read(dataBuf)
-	bufStr := string(dataBuf)
-	st := strings.Split(bufStr, "\n")
-	bufStr = st[0]
-	errStr := st[1]
-	//read code session from csv
-	codeSession := getSessionId(bufStr)
-	sessionId := strings.Split(errStr, ",")[1]
-	errorMes := strings.Split(errStr, ",")[2]
-	sqlCon.PrepareExec("UPDATE code_sessions SET error=? WHERE id=?", errorMes, sessionId)
+    var jsonResult overAllResultJSON
+    json.NewDecoder(con).Decode(&jsonResult)
 	con.Write([]byte("OK\n"))
 	con.Close()
+	//read code session from csv
+	codeSession := jsonResult.SessionID 
 	//block race condition
 	jobMap.Lock()
 	//remove from jobMap
@@ -152,14 +164,14 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		//pass to judge
 		go passJobToJudge(job)
 	}
-	csv := strings.Split(bufStr, ",")
-	result := csv[3]
-	sqlCon.PrepareExec("UPDATE code_sessions SET result=? WHERE id=?", result, sessionId)
-	for i := 5; i < len(csv)-1; i += 2 {
+	result := jsonResult.OverAllResult
+	sqlCon.PrepareExec("UPDATE code_sessions SET result=? , error=? WHERE code_sessions.id=?", result,jsonResult.ErrMessage, codeSession)
+    for _, testcase := range jsonResult.Testcases {
 		id := generateSession()
-		caseResult := csv[i]
-		caseTime := csv[i+1]
-		sqlCon.PrepareExec("INSERT INTO testcase_results (id, session_id, name, result, time) VALUES(?, ?, ?, ?, ?)", id, sessionId, i, caseResult, caseTime)
+		caseResult := testcase.Result
+        caseTime := testcase.Time
+        caseName := testcase.Name
+		sqlCon.PrepareExec("INSERT INTO testcase_results (id, session_id, name, result, time) VALUES(?, ?, ?, ?, ?)", id, codeSession, caseName, caseResult, caseTime)
 	}
 	con.Write([]byte("OK\n"))
 	con.Close()
