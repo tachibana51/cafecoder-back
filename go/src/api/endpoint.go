@@ -62,7 +62,7 @@ type resGetResult struct {
 	Lang        string `json:"language"`
 	Result      string `json:"result"`
 	MaxRuntime  int    `json:"max_runtime"`
-    ErrorMess   string `json:"error"`
+	ErrorMess   string `json:"error"`
 }
 
 //GET /api/v1/user
@@ -86,31 +86,30 @@ type resPostUser struct {
 
 //GET /api/v1/submits
 type submit struct {
-    Username    string `json:"username"`
+	Username    string `json:"username"`
 	ProblemName string `json:"problem_name"`
 	SubmitId    string `json:"submit_id"`
 	SubmitTime  string `json:"submit_time"`
-    Result      string `json:"result"`
+	Result      string `json:"result"`
 }
 
 type reqGetSubmits struct {
-	Username string `json:"username"`
+	Username  string `json:"username"`
 	ContestId string `json:"contest_id"`
 }
 
 type resGetSubmits struct {
-    Submits []submit `json:"submits"`
+	Submits []submit `json:"submits"`
 }
 
-//GET /api/v1/allsubmits 
+//GET /api/v1/allsubmits
 
 type reqGetAllSubmits struct {
 	ContestId string `json:"contest_id"`
 }
 
-
 type resGetAllSubmits struct {
-    Submits []submit `json:"submits"`
+	Submits []submit `json:"submits"`
 }
 
 //POST /api/v1/auth
@@ -201,8 +200,8 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon)
 		var jsonData reqGetResult
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
-        //read data from db
-		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession,jsonData.CodeSession)
+		//read data from db
+		rows, err := sqlCon.SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession, jsonData.CodeSession)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -355,9 +354,9 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
 
 //api/v1/submits
 func submitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
-    switch r.Method {
-    case "GET":
-        //template for request
+	switch r.Method {
+	case "GET":
+		//template for request
 		var jsonData reqGetSubmits
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
@@ -365,7 +364,7 @@ func submitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 			fmt.Println(err)
 			return
 		}
-        //read results from db
+		//read results from db
 		rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems, contests WHERE users.name='%s' AND code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id='%s'", jsonData.Username, jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
@@ -377,22 +376,23 @@ func submitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 			rows.Scan(&s.Username, &s.ProblemName, &s.SubmitId, &s.SubmitTime, &s.Result)
 			submits = append(submits, s)
 		}
-        //convert to Json
-        var res resGetSubmits
-        res.Submits = submits
+		//convert to Json
+		var res resGetSubmits
+		res.Submits = submits
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		fmt.Fprintf(w, string(jsonBytes))
-    }
+	}
 }
+
 //api/v1/allsubmits
 func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon) {
-    switch r.Method {
-    case "GET":
-        //template for request
+	switch r.Method {
+	case "GET":
+		//template for request
 		var jsonData reqGetAllSubmits
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
@@ -400,8 +400,8 @@ func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.My
 			fmt.Println(err)
 			return
 		}
-        //get from db
-        rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id = '%s'", jsonData.ContestId)
+		//get from db
+		rows, err := sqlCon.SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id = '%s'", jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -410,18 +410,18 @@ func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.My
 		for rows.Next() {
 			var s submit
 			rows.Scan(&s.Username, &s.ProblemName, &s.SubmitId, &s.SubmitTime, &s.Result)
-		    submits = append(submits, s)
+			submits = append(submits, s)
 		}
-        //convert to Json
-        var res resGetAllSubmits
-        res.Submits = submits
+		//convert to Json
+		var res resGetAllSubmits
+		res.Submits = submits
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 		fmt.Fprintf(w, string(jsonBytes))
-        }
+	}
 }
 
 //api/v1/testcase
@@ -616,7 +616,18 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 		var acs []firstAC
 		var userIds []string
 		var userNames []string
-        _, err = sqlCon.SafeSelect("CREATE OR REPLACE VIEW cafecoder.%s AS SELECT users.id userid, (SELECT users.name FROM users WHERE users.id=userid) username,problems.name problem, (SELECT code_sessions.id FROM code_sessions WHERE code_sessions.problem_id=problems.id AND problems.name = problem AND problems.contest_id='%s' AND code_sessions.result='AC' ORDER BY code_sessions.upload_date ASC LIMIT 1,1) sessionid, (SELECT code_sessions.upload_date FROM code_sessions , contests WHERE code_sessions.id=sessionid) upload_date,  problems.point point, SUM(problems.point) sumpoint FROM contests, problems, code_sessions, users WHERE contests.id = problems.id AND users.id = code_sessions.user_id AND problems.contest_id = '%s' AND code_sessions.problem_id = problems.id GROUP BY problems.id, users.id ORDER BY sumpoint DESC, upload_date ASC",jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
+		_, err = sqlCon.SafeSelect(`CREATE OR REPLACE VIEW cafecoder.%s AS SELECT 
+		users.id userid,
+		(SELECT u.name FROM users u WHERE u.id=userid) username,
+		problems.name problem, 
+		(SELECT code_sessions.id FROM code_sessions, problems WHERE code_sessions.problem_id=problems.id AND problems.contest_id='%s' AND code_sessions.result='AC' 
+		ORDER BY code_sessions.upload_date AND code_sessions.user_id = userid ASC LIMIT 0,1) sessionid, 
+		(SELECT code_sessions.upload_date FROM code_sessions WHERE code_sessions.id=sessionid) upload_date,
+		(SELECT problems.point FROM problems WHERE problems.name=problem AND problems.contest_id='%s') point
+		FROM contests, problems, code_sessions, users  
+		WHERE contests.id = problems.contest_id AND users.id = code_sessions.user_id 
+		AND problems.contest_id = '%s' AND code_sessions.problem_id = problems.id 
+		GROUP BY users.id, contests.id, problems.id`, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -636,24 +647,21 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon *cafedb.MyCon
 		}
 
 		for i, userid := range userIds {
-			rows, err := sqlCon.SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time), point FROM contests, users, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND users.id = cafecoder.%s.userid AND contests.id = '%s'", jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId, jsonData.ContestId)
+			rows, err := sqlCon.SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time) time , point , (SELECT SUM(point) FROM cafecoder.%s WHERE userid='%s' GROUP BY userid) sumpoint FROM contests, users, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND users.id = cafecoder.%s.userid AND contests.id = '%s' ORDER BY sumpoint DESC , time ASC", jsonData.ContestId, userid, jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId, jsonData.ContestId)
 			if err != nil {
 				fmt.Println(err)
 				return
 			}
 			j := 0
-			sumOfPoint := 0
+			result = append(result, *new(contestResult))
 			for rows.Next() {
 				acs = append(acs, *new(firstAC))
-				rows.Scan(&acs[j].ProblemName, &acs[j].SubmitId, &acs[j].SubmitTime, &acs[j].Point)
-				sumOfPoint += acs[j].Point
+				rows.Scan(&acs[j].ProblemName, &acs[j].SubmitId, &acs[j].SubmitTime, &acs[j].Point, &result[i].Point)
 				j += 1
 			}
-			result = append(result, *new(contestResult))
 			result[i].Rank = i
 			result[i].Username = userNames[i]
 			result[i].Submits = acs
-			result[i].Point = sumOfPoint
 		}
 		//convert to json
 		jsonBytes, err := json.Marshal(result)
