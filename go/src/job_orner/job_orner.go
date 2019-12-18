@@ -2,11 +2,11 @@ package main
 
 import (
 	"../cafedb"
-    "encoding/json"
 	"../values"
 	"crypto/md5"
 	crand "crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
@@ -23,12 +23,12 @@ const (
 )
 
 type overAllResultJSON struct {
-	SessionID     string            `json:"sessionID"`
-	OverAllTime   int64             `json:"time"`
-	OverAllResult string            `json:"result"`
-	OverAllScore  int               `json:"score"`
-	ErrMessage string `json:"errMessage"`
-	Testcases      []testcaseJSON `json:"testcases"`
+	SessionID     string         `json:"sessionID"`
+	OverAllTime   int64          `json:"time"`
+	OverAllResult string         `json:"result"`
+	OverAllScore  int            `json:"score"`
+	ErrMessage    string         `json:"errMessage"`
+	Testcases     []testcaseJSON `json:"testcases"`
 }
 
 type testcaseJSON struct {
@@ -37,8 +37,6 @@ type testcaseJSON struct {
 	MemoryUsed int64  `json:"memory_used"`
 	Time       int64  `json:"time"`
 }
-
-
 
 type mutexJobMap struct {
 	sync.Mutex
@@ -68,7 +66,7 @@ func main() {
 	jobMap := newMutexJobMap()
 	toJobQueue := newMutexJobQueue()
 	sq := cafedb.NewCon()
-    sqlCon := &sq
+	sqlCon := &sq
 	defer sq.Close()
 	listenfromFront, err := net.Listen("tcp", "0.0.0.0:4649")
 	if err != nil {
@@ -88,16 +86,16 @@ func main() {
 }
 
 //todo reset queue
-func initFromDB(toJobQueue *mutexJobQueue,  sqlCon **cafedb.MyCon){
-    rows, err := (*sqlCon).SafeSelect("SELECT code_sessions.id FROM code_sessions WHERE code_sessions.result='WJ'")
-    if err != nil {
-        fmt.Println(err)
-    }
-    var bufStr string
-    for rows.Next() {
-        rows.Scan(&bufStr)
+func initFromDB(toJobQueue *mutexJobQueue, sqlCon **cafedb.MyCon) {
+	rows, err := (*sqlCon).SafeSelect("SELECT code_sessions.id FROM code_sessions WHERE code_sessions.result='WJ'")
+	if err != nil {
+		fmt.Println(err)
+	}
+	var bufStr string
+	for rows.Next() {
+		rows.Scan(&bufStr)
 		toJobQueue.que = append(toJobQueue.que, bufStr)
-    }
+	}
 }
 func fromFrontThread(listenfromFront *net.Listener, jobMap *mutexJobMap, toJobQueue *mutexJobQueue) {
 	for {
@@ -155,12 +153,12 @@ func fromJudgeThread(listenfromJudge *net.Listener, jobMap *mutexJobMap, toJobQu
 
 func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue, sqlCon **cafedb.MyCon) {
 	//read csv result
-    var jsonResult overAllResultJSON
-    json.NewDecoder(con).Decode(&jsonResult)
+	var jsonResult overAllResultJSON
+	json.NewDecoder(con).Decode(&jsonResult)
 	con.Write([]byte("OK\n"))
 	con.Close()
 	//read code session from csv
-	codeSession := jsonResult.SessionID 
+	codeSession := jsonResult.SessionID
 	//block race condition
 	jobMap.Lock()
 	//remove from jobMap
@@ -178,12 +176,12 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		go passJobToJudge(job)
 	}
 	result := jsonResult.OverAllResult
-	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=? WHERE code_sessions.id=?", result,jsonResult.ErrMessage, codeSession)
-    for _, testcase := range jsonResult.Testcases {
+	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=? WHERE code_sessions.id=? AND code_sessions.result='WJ'", result, jsonResult.ErrMessage, codeSession)
+	for _, testcase := range jsonResult.Testcases {
 		id := generateSession()
 		caseResult := testcase.Result
-        caseTime := testcase.Time
-        caseName := testcase.Name
+		caseTime := testcase.Time
+		caseName := testcase.Name
 		(*sqlCon).PrepareExec("INSERT INTO testcase_results (id, session_id, name, result, time) VALUES(?, ?, ?, ?, ?)", id, codeSession, caseName, caseResult, caseTime)
 	}
 	con.Write([]byte("OK\n"))
