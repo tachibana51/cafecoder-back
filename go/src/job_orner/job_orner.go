@@ -89,7 +89,7 @@ func main() {
 
 //todo reset queue
 func initFromDB(toJobQueue *mutexJobQueue,  sqlCon **cafedb.MyCon){
-    rows, err := cafedb.SafeSelect("SELECT code_sessions.id FROM code_sessions WHERE code_sessions.result='WJ'")
+    rows, err := (*sqlCon).SafeSelect("SELECT code_sessions.id FROM code_sessions WHERE code_sessions.result='WJ'")
     if err != nil {
         fmt.Println(err)
     }
