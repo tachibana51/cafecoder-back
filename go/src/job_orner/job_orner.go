@@ -87,6 +87,18 @@ func main() {
 	wg.Wait()
 }
 
+//todo reset queue
+func initFromDB(toJobQueue *mutexJobQueue,  sqlCon **cafedb.MyCon){
+    rows, err := (*sqlCon).SafeSelect("SELECT code_sessions.id FROM code_sessions WHERE code_sessions.result='WJ'")
+    if err != nil {
+        fmt.Println(err)
+    }
+    var bufStr string
+    for rows.Next() {
+        rows.Scan(&bufStr)
+		toJobQueue.que = append(toJobQueue.que, bufStr)
+    }
+}
 func fromFrontThread(listenfromFront *net.Listener, jobMap *mutexJobMap, toJobQueue *mutexJobQueue) {
 	for {
 		con, err := (net.Listener)(*(listenfromFront)).Accept()
