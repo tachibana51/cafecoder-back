@@ -67,8 +67,9 @@ func main() {
 	wg := sync.WaitGroup{}
 	jobMap := newMutexJobMap()
 	toJobQueue := newMutexJobQueue()
-	sqlCon := cafedb.NewCon()
-	defer sqlCon.Close()
+	sq := cafedb.NewCon()
+    sqlCon := &sq
+	defer sq.Close()
 	listenfromFront, err := net.Listen("tcp", "0.0.0.0:4649")
 	if err != nil {
 		fmt.Println("bind err front thread")
@@ -127,7 +128,7 @@ func doFrontThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue)
 	con.Close()
 }
 
-func fromJudgeThread(listenfromJudge *net.Listener, jobMap *mutexJobMap, toJobQueue *mutexJobQueue, sqlCon *cafedb.MyCon) {
+func fromJudgeThread(listenfromJudge *net.Listener, jobMap *mutexJobMap, toJobQueue *mutexJobQueue, sqlCon **cafedb.MyCon) {
 	for {
 		con, err := (net.Listener)(*(listenfromJudge)).Accept()
 		fmt.Println("accept Judge Thread")
@@ -140,7 +141,7 @@ func fromJudgeThread(listenfromJudge *net.Listener, jobMap *mutexJobMap, toJobQu
 	}
 }
 
-func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue, sqlCon *cafedb.MyCon) {
+func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQueue, sqlCon **cafedb.MyCon) {
 	//read csv result
     var jsonResult overAllResultJSON
     json.NewDecoder(con).Decode(&jsonResult)
@@ -165,13 +166,13 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		go passJobToJudge(job)
 	}
 	result := jsonResult.OverAllResult
-	sqlCon.PrepareExec("UPDATE code_sessions SET result=? , error=? WHERE code_sessions.id=?", result,jsonResult.ErrMessage, codeSession)
+	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=? WHERE code_sessions.id=?", result,jsonResult.ErrMessage, codeSession)
     for _, testcase := range jsonResult.Testcases {
 		id := generateSession()
 		caseResult := testcase.Result
         caseTime := testcase.Time
         caseName := testcase.Name
-		sqlCon.PrepareExec("INSERT INTO testcase_results (id, session_id, name, result, time) VALUES(?, ?, ?, ?, ?)", id, codeSession, caseName, caseResult, caseTime)
+		(*sqlCon).PrepareExec("INSERT INTO testcase_results (id, session_id, name, result, time) VALUES(?, ?, ?, ?, ?)", id, codeSession, caseName, caseResult, caseTime)
 	}
 	con.Write([]byte("OK\n"))
 	con.Close()
