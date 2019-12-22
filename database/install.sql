@@ -55,3 +55,6 @@ CREATE TABLE cafecoder.testcase_results(
     time int(11),
     PRIMARY KEY (id)
 );
+alter table code_sessions add index udx(user_id);
+alter table code_sessions add index idx(id);
+
