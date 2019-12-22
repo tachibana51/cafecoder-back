@@ -286,8 +286,11 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		decodedCode, err := base64.StdEncoding.DecodeString(jsonData.Code)
 		file.Write([]byte(decodedCode))
 		file.Close()
-		(*sqlCon).PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, result,upload_date) VALUES(?, ?, ?, ?, 'WJ', NOW())", sessionId, problemId, userId, lang)
-
+		_, err = (*sqlCon).PrepareExec("INSERT INTO code_sessions (id, problem_id, user_id, lang, result, upload_date) VALUES(?, ?, ?, ?, 'WJ', NOW())", sessionId, problemId, userId, lang)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 		//con job_order
 		con, err := net.Dial("tcp", values.QueHostPort)
 		if err != nil {
@@ -403,7 +406,7 @@ func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.M
 			return
 		}
 		//get from db
-		rows, err := (*sqlCon).SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id = '%s' ORDER BY code_sessions.upload_date DESC", jsonData.ContestId)
+		rows, err := (*sqlCon).SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND problems.contest_id = '%s' ORDER BY code_sessions.upload_date DESC", jsonData.ContestId)
         defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -595,6 +598,7 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		rows.Next()
 		rows.Scan(&contestName)
 		res.ContestName = contestName
+		contestName = ""
 		rows, err = (*sqlCon).SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND NOW() > contests.start_time", jsonData.ContestId)
         defer rows.Close()
 		rows.Scan(&contestName)
@@ -622,24 +626,24 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		//get first ACs
 		// name sessionid date point
 		var result []contestResult
-		_, err = (*sqlCon).SafeSelect(`CREATE OR REPLACE VIEW cafecoder.%s AS SELECT 
-		users.id userid,
-		(SELECT u.name FROM users u WHERE u.id=userid) username,
+		_, err = (*sqlCon).SafeSelect(`CREATE OR REPLACE VIEW cafecoder.%s AS SELECT  
+		DISTINCT users.id userid,
+		(SELECT DISTINCT u.name FROM users u WHERE u.id=userid) username,
 		problems.name problem, 
-		(SELECT code_sessions.id FROM code_sessions, problems WHERE code_sessions.problem_id=problems.id AND code_sessions.user_id = userid AND problems.contest_id='%s' AND code_sessions.result='AC' 
-		ORDER BY code_sessions.upload_date ASC LIMIT 0,1) sessionid, 
-		(SELECT code_sessions.upload_date FROM code_sessions WHERE code_sessions.id=sessionid) upload_date,
-		(SELECT problems.point FROM problems WHERE problems.name=problem AND problems.contest_id='%s') point
+		(SELECT c.id FROM code_sessions c, problems p, contests cont WHERE c.problem_id=p.id AND c.user_id = userid AND p.name = problem AND p.contest_id='%s' AND cont.id = p.contest_id AND c.result='AC' AND c.upload_date BETWEEN cont.start_time AND cont.end_time  
+		ORDER BY c.upload_date ASC LIMIT 0,1) sessionid, 
+		(SELECT c.upload_date FROM code_sessions c WHERE c.id=sessionid LIMIT 0,1) upload_date,
+		(SELECT p.point FROM problems p WHERE p.name=problem AND problems.contest_id='%s' LIMIT 0,1) point
 		FROM contests, problems, code_sessions, users  
 		WHERE contests.id = problems.contest_id AND users.id = code_sessions.user_id 
 		AND problems.contest_id = '%s' AND code_sessions.problem_id = problems.id 
-		GROUP BY users.id, contests.id, problems.id`, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
+		GROUP BY userid, contests.id, problem`, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
 		}
 
-		rows, err := (*sqlCon).SafeSelect("SELECT userid uid, username,  (SELECT SUM(point) FROM cafecoder.%s WHERE userid=uid GROUP BY userid) sumpoint  FROM cafecoder.%s ORDER BY sumpoint DESC , upload_date ASC", jsonData.ContestId, jsonData.ContestId)
+		rows, err := (*sqlCon).SafeSelect("SELECT userid uid, username,  (SELECT SUM(point) FROM cafecoder.%s WHERE userid=uid GROUP BY userid) sumpoint, (SELECT MAX(s.upload_date) FROM cafecoder.%s s WHERE s.userid=uid GROUP BY s.userid) ud FROM cafecoder.%s GROUP BY uid ORDER BY sumpoint DESC , ud ASC", jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
         defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -648,9 +652,10 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		var userid string
 		var userName string
 		var point int
+		var dummy string
 		for i := 1; rows.Next(); i++ {
-			rows.Scan(&userid, &userName, &point)
-			rowt, err := (*sqlCon).SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time) time , point FROM contests, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND contests.id = '%s'", jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId)
+			rows.Scan(&userid, &userName, &point, &dummy)
+			rowt, err := (*sqlCon).SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time) time , point FROM contests, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND contests.id = '%s' ORDER BY problem ASC", jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId)
 			if err != nil {
 				fmt.Println(err)
 				return

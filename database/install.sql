@@ -1,5 +1,5 @@
 CREATE DATABASE cafecoder;
-CREATE USER 'cafecoder'@'localhost' IDENTIFIED BY 'password';
+CREATE USER 'cafecoder'@'localhost' IDENTIFIED BY 'aGVsbG93b3JsZAo';
 GRANT ALL PRIVILEGES ON cafecoder.* to 'cafecoder'@'localhost';
 CREATE TABLE cafecoder.users( 
     id varchar(32) NOT NULL,
