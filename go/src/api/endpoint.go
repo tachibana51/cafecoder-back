@@ -370,7 +370,7 @@ func submitsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 			return
 		}
 		//read results from db
-		rows, err := (*sqlCon).SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems, contests WHERE users.name='%s' AND code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND contests.id='%s' ORDER BY code_sessions.upload_date DESC", jsonData.Username, jsonData.ContestId)
+		rows, err := (*sqlCon).SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems, contests WHERE users.name='%s' AND code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND problems.contest_id = contests.id AND contests.id='%s' ORDER BY code_sessions.upload_date DESC", jsonData.Username, jsonData.ContestId)
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -598,12 +598,13 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		rows.Next()
 		rows.Scan(&contestName)
 		res.ContestName = contestName
-		contestName = ""
-		rows, err = (*sqlCon).SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND CAST( NOW() AS DATETIME ) > contests.start_time", jsonData.ContestId)
+		rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.start_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+		var isOpenInt int
 		defer rows.Close()
-		rows.Scan(&contestName)
-		res.IsOpen = (contestName != "")
+		rows.Next()
+		rows.Scan(&isOpenInt)
 		//convert to json
+		res.IsOpen = (isOpenInt == 1)
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
