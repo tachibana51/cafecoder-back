@@ -191,7 +191,7 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		go passJobToJudge(job)
 	}
 	result := jsonResult.OverAllResult
-	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=? WHERE code_sessions.id=? AND code_sessions.result='WJ'", result, jsonResult.ErrMessage, codeSession)
+	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=SUBSTRING(?, 0, 4095) WHERE code_sessions.id=? AND code_sessions.result='WJ'", result, jsonResult.ErrMessage, codeSession)
 	for _, testcase := range jsonResult.Testcases {
 		id := generateSession()
 		caseResult := testcase.Result
