@@ -77,11 +77,26 @@ func main() {
 	if err != nil {
 		fmt.Println("bind err judge thread")
 	}
-
+	rows, _ := (*sqlCon).SafeSelect("SELECT code_sessions.id , concat(concat(users.id, '_'),code_sessions.id), code_sessions.lang, testcases.listpath, problems.point FROM code_sessions, users, testcases, problems WHERE code_sessions.user_id = users.id AND code_sessions.problem_id=problems.id AND testcases.problem_id = problems.id AND code_sessions.result='WJ'")
 	wg.Add(1)
 	go fromFrontThread(&listenfromFront, jobMap, toJobQueue)
 	wg.Add(1)
 	go fromJudgeThread(&listenfromJudge, jobMap, toJobQueue, sqlCon)
+	//init
+	var(
+		sessid string
+		filename string
+		lang string
+		testcase string
+		point int
+	)
+	for rows.Next() {
+		rows.Scan(&sessid, &filename, &lang, &testcase, &point)
+		con , _ := net.Dial("tcp","localhost:4649")
+		con.Write([]byte(strings.Join([]string{"dummy",sessid, "/submits/"+filename, lang, testcase, string(point)},",")))
+		con.Close()
+	}
+	rows.Close()
 	wg.Wait()
 }
 
