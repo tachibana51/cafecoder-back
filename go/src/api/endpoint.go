@@ -202,7 +202,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon
 		err := json.Unmarshal(body, &jsonData)
 		//read data from db
 		rows, err := (*sqlCon).SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession, jsonData.CodeSession)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -249,7 +249,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		}
 		//read data from db
 		rows, err := (*sqlCon).SafeSelect("SELECT users.id FROM users WHERE users.name = '%s' AND users.auth_token = '%s'", jsonData.Username, jsonData.AuthToken)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -262,7 +262,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		}
 
 		rows, err = (*sqlCon).SafeSelect("SELECT problems.id, problems.point , testcases.listpath FROM contests, problems, users, testcases WHERE problems.contest_id = contests.id AND testcases.id = problems.testcase_id AND contests.id = '%s' AND problems.name = '%s'", jsonData.ContestId, jsonData.Problem)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -320,7 +320,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		}
 		//read data from db
 		rows, err := (*sqlCon).SafeSelect("SELECT code_sessions.id, users.id FROM code_sessions, users WHERE code_sessions.user_id = users.id AND code_sessions.id = '%s'", jsonData.CodeSession)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -333,7 +333,7 @@ func codeHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 			return
 		}
 		filename := "/submits/" + userId + "_" + sessionId
-		file, err := os.Open("./fileserver"+filename)
+		file, err := os.Open("./fileserver" + filename)
 		defer file.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -407,7 +407,7 @@ func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.M
 		}
 		//get from db
 		rows, err := (*sqlCon).SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND problems.contest_id = '%s' ORDER BY code_sessions.upload_date DESC", jsonData.ContestId)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -444,7 +444,7 @@ func testcaseHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyC
 		}
 		//read results from db
 		rows, err := (*sqlCon).SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_results WHERE testcase_results.session_id='%s'", jsonData.CodeSession)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -481,7 +481,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		}
 		//read result from db
 		rows, err := (*sqlCon).SafeSelect("SELECT users.id FROM users WHERE users.name = '%s'", jsonData.Username)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -509,7 +509,7 @@ func userHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		}
 		//is exists
 		rows, err := (*sqlCon).SafeSelect("SELECT users.id FROM users WHERE users.name = '%s'", jsonData.Username)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -550,7 +550,7 @@ func authHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) 
 		//auth
 		hash := cafedb.GetHash(jsonData.Password)
 		rows, err := (*sqlCon).SafeSelect("SELECT users.id FROM users WHERE users.name = '%s' AND users.password_hash = '%s'", jsonData.Username, hash)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -588,7 +588,7 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		}
 		//get db
 		rows, err := (*sqlCon).SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
@@ -599,8 +599,8 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		rows.Scan(&contestName)
 		res.ContestName = contestName
 		contestName = ""
-		rows, err = (*sqlCon).SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND NOW() > contests.start_time", jsonData.ContestId)
-        defer rows.Close()
+		rows, err = (*sqlCon).SafeSelect("SELECT contests.name FROM contests WHERE contests.id = '%s' AND CAST( NOW() AS DATETIME ) > contests.start_time", jsonData.ContestId)
+		defer rows.Close()
 		rows.Scan(&contestName)
 		res.IsOpen = (contestName != "")
 		//convert to json
@@ -644,7 +644,7 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		}
 
 		rows, err := (*sqlCon).SafeSelect("SELECT userid uid, username,  (SELECT SUM(point) FROM cafecoder.%s WHERE userid=uid GROUP BY userid) sumpoint, (SELECT MAX(s.upload_date) FROM cafecoder.%s s WHERE s.userid=uid GROUP BY s.userid) ud FROM cafecoder.%s GROUP BY uid ORDER BY sumpoint DESC , ud ASC", jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
-        defer rows.Close()
+		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
 			return
