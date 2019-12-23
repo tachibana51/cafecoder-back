@@ -443,7 +443,7 @@ func testcaseHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyC
 			return
 		}
 		//read results from db
-		rows, err := (*sqlCon).SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_results WHERE testcase_results.session_id='%s'", jsonData.CodeSession)
+		rows, err := (*sqlCon).SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_results WHERE testcase_results.session_id='%s' ORDER BY testcase_results.name", jsonData.CodeSession)
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
