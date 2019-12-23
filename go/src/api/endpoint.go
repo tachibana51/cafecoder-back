@@ -201,7 +201,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
 		//read data from db
-		rows, err := (*sqlCon).SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession, jsonData.CodeSession)
+		rows, err := (*sqlCon).SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND code_sessions.problem_id = problems.id AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession, jsonData.CodeSession)
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
