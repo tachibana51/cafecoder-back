@@ -77,7 +77,7 @@ func main() {
 	if err != nil {
 		fmt.Println("bind err judge thread")
 	}
-	rows, _ := (*sqlCon).SafeSelect("SELECT code_sessions.id , concat(concat(users.id, '_'),code_sessions.id), code_sessions.lang, testcases.listpath, problems.point FROM code_sessions, users, testcases, problems WHERE code_sessions.user_id = users.id AND code_sessions.problem_id=problems.id AND testcases.problem_id = problems.id AND code_sessions.result='WJ'")
+	rows, _ := (*sqlCon).SafeSelect("SELECT code_sessions.id , concat(concat(users.id, '_'),code_sessions.id), code_sessions.lang, testcases.listpath, problems.point FROM code_sessions, users, testcases, problems WHERE code_sessions.user_id = users.id AND code_sessions.problem_id=problems.id AND testcases.problem_id = problems.id AND code_sessions.result = 'WJ'")
 	wg.Add(1)
 	go fromFrontThread(&listenfromFront, jobMap, toJobQueue)
 	wg.Add(1)
@@ -191,7 +191,7 @@ func doFromJudgeThread(con net.Conn, jobMap *mutexJobMap, toJobQueue *mutexJobQu
 		go passJobToJudge(job)
 	}
 	result := jsonResult.OverAllResult
-	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=SUBSTRING(?, 0, 4095) WHERE code_sessions.id=? AND code_sessions.result='WJ'", result, jsonResult.ErrMessage, codeSession)
+	(*sqlCon).PrepareExec("UPDATE code_sessions SET result=? , error=LEFT(?, 4095) WHERE code_sessions.id=? AND code_sessions.result='WJ'", result, jsonResult.ErrMessage, codeSession)
 	for _, testcase := range jsonResult.Testcases {
 		id := generateSession()
 		caseResult := testcase.Result
