@@ -197,6 +197,7 @@ func evenvListenerThread() {
 	http.HandleFunc("/api/v1/ranking", FuncWrapper(rankingHandler, &sqlCon))
 	http.HandleFunc("/api/v1/submits", FuncWrapper(submitsHandler, &sqlCon))
 	http.HandleFunc("/api/v1/allsubmits", FuncWrapper(allSubmitsHandler, &sqlCon))
+	http.HandleFunc("/api/v1/all_contests", FuncWrapper(allContestsHandler, &sqlCon))
 	http.ListenAndServe(":8080", nil)
 }
 
@@ -655,13 +656,13 @@ func allContestsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.
             var start_time string
             var end_time string
             rows.Scan(&contestName, &start_time, &end_time)
-            rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.start_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+            rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.start_time AS DATETIME ), 0, 1) FROM contests WHERE contests.name = '%s'", contestName)
             var isOpenInt int
             defer rows.Close()
             rows.Next()
             rows.Scan(&isOpenInt)
             rows.Close()
-            rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.end_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+            rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.end_time AS DATETIME ), 0, 1) FROM contests WHERE contests.name = '%s'", contestName)
             var isOverInt int
             defer rows.Close()
             rows.Next()
