@@ -138,7 +138,7 @@ type resGetContest struct {
 
 //GET /api/v1/all_contests
 type resGetAllContests struct {
-    contests []reqGetContest `json:"contests"`
+    Contests []resGetContest `json:"contests"`
 }
 
 
@@ -629,6 +629,60 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		fmt.Fprintf(w, string(jsonBytes))
 	}
 }
+
+//GET /api/v1/all_contests
+func allContestsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) {
+	switch r.Method {
+	case "GET":
+		var jsonData reqGetContest
+		body, _ := readData(&r)
+		err := json.Unmarshal(body, &jsonData)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		//get db
+		rows, err := (*sqlCon).SafeSelect("SELECT contests.name, contests.start_time, contests.end_time FROM contests")
+		defer rows.Close()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+        var res resGetAllContests
+		for rows.Next() {
+            var contestName string
+            var cont resGetContest
+            var start_time string
+            var end_time string
+            rows.Scan(&contestName, &start_time, &end_time)
+            rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.start_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+            var isOpenInt int
+            defer rows.Close()
+            rows.Next()
+            rows.Scan(&isOpenInt)
+            rows.Close()
+            rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.end_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+            var isOverInt int
+            defer rows.Close()
+            rows.Next()
+            rows.Scan(&isOverInt)
+            //convert to json
+            cont.StartTime = start_time
+            cont.EndTime = end_time
+            cont.ContestName = contestName
+            cont.IsOpen = (isOpenInt == 1)
+            cont.IsOver = (isOverInt == 1)
+            res.Contests = append(res.Contests, cont)
+        }
+		jsonBytes, err := json.Marshal(res)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		fmt.Fprintf(w, string(jsonBytes))
+	}
+}
+
 
 func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon) {
 	switch r.Method {
