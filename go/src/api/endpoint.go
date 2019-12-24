@@ -132,8 +132,16 @@ type resGetContest struct {
 	ContestName string `json:"contest_name"`
 	StartTime   string `json:"start_time"`
 	EndTime     string `json:"end_time"`
+    IsOver      bool   `json:"is_over"`
 	IsOpen      bool   `json:"is_open"`
 }
+
+//GET /api/v1/all_contests
+type resGetAllContests struct {
+    contests []reqGetContest `json:"contests"`
+}
+
+
 
 //GET /api/v1/testcase
 type reqGetTestCase struct {
@@ -598,13 +606,21 @@ func contestHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		rows.Next()
 		rows.Scan(&contestName)
 		res.ContestName = contestName
+        rows.Close()
 		rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.start_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
 		var isOpenInt int
 		defer rows.Close()
 		rows.Next()
 		rows.Scan(&isOpenInt)
+        rows.Close()
+		rows, err = (*sqlCon).SafeSelect("SELECT IF(CAST( NOW() AS DATETIME ) < CAST( contests.end_time AS DATETIME ), 0, 1) FROM contests WHERE contests.id = '%s'", jsonData.ContestId)
+		var isOverInt int
+		defer rows.Close()
+		rows.Next()
+		rows.Scan(&isOverInt)
 		//convert to json
 		res.IsOpen = (isOpenInt == 1)
+		res.IsOver = (isOverInt == 1)
 		jsonBytes, err := json.Marshal(res)
 		if err != nil {
 			fmt.Println(err)
