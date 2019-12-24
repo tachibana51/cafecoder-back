@@ -1,7 +1,7 @@
 package values
 
 const (
-	MaxWorker          = 10
+	MaxWorker          = 30
 	JudgeHostPort      = "133.130.112.219:8888"
 	FrontHostPort      = "localhost:1234"
 	QueHostPort        = "localhost:4649"
