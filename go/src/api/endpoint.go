@@ -201,7 +201,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCon
 		body, _ := readData(&r)
 		err := json.Unmarshal(body, &jsonData)
 		//read data from db
-		rows, err := (*sqlCon).SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession, jsonData.CodeSession)
+		rows, err := (*sqlCon).SafeSelect("SELECT users.name, contests.name, problems.name, problems.point, code_sessions.lang, code_sessions.result, code_sessions.error, (SELECT  MAX(testcase_results.time) FROM testcase_results WHERE testcase_results.session_id='%s') as time FROM contests, problems, users, code_sessions  WHERE code_sessions.id = '%s' AND code_sessions.problem_id = problems.id AND problems.contest_id = contests.id  AND code_sessions.user_id = users.id ", jsonData.CodeSession, jsonData.CodeSession)
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -443,7 +443,7 @@ func testcaseHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyC
 			return
 		}
 		//read results from db
-		rows, err := (*sqlCon).SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_results WHERE testcase_results.session_id='%s'", jsonData.CodeSession)
+		rows, err := (*sqlCon).SafeSelect("SELECT testcase_results.name, testcase_results.result, testcase_results.time FROM testcase_results WHERE testcase_results.session_id='%s' ORDER BY testcase_results.name", jsonData.CodeSession)
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -633,10 +633,10 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		problems.name problem, 
 		(SELECT c.id FROM code_sessions c, problems p, contests cont WHERE c.problem_id=p.id AND c.user_id = userid AND p.name = problem AND p.contest_id='%s' AND cont.id = p.contest_id AND c.result='AC' AND c.upload_date BETWEEN cont.start_time AND cont.end_time  
 		ORDER BY c.upload_date ASC LIMIT 0,1) sessionid, 
-		(SELECT c.upload_date FROM code_sessions c WHERE c.id=sessionid LIMIT 0,1) upload_date,
-		(SELECT p.point FROM problems p WHERE p.name=problem AND problems.contest_id='%s' LIMIT 0,1) point
+		(SELECT c.upload_date FROM code_sessions c WHERE c.id=sessionid) upload_date,
+		(SELECT p.point FROM problems p WHERE p.name=problem AND p.contest_id='%s') point
 		FROM contests, problems, code_sessions, users  
-		WHERE contests.id = problems.contest_id AND users.id = code_sessions.user_id 
+		WHERE contests.id = problems.contest_id AND users.id = code_sessions.user_id AND code_sessions.result='AC' AND code_sessions.upload_date BETWEEN contests.start_time AND contests.end_time  
 		AND problems.contest_id = '%s' AND code_sessions.problem_id = problems.id 
 		GROUP BY userid, contests.id, problem`, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
 		if err != nil {
@@ -644,7 +644,7 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 			return
 		}
 
-		rows, err := (*sqlCon).SafeSelect("SELECT userid uid, username,  (SELECT SUM(point) FROM cafecoder.%s WHERE userid=uid GROUP BY userid) sumpoint, (SELECT MAX(s.upload_date) FROM cafecoder.%s s WHERE s.userid=uid GROUP BY s.userid) ud FROM cafecoder.%s GROUP BY uid ORDER BY sumpoint DESC , ud ASC", jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
+		rows, err := (*sqlCon).SafeSelect("SELECT userid uid, username,  (SELECT SUM(point) FROM cafecoder.%s WHERE userid=uid GROUP BY userid) sumpoint, (SELECT MAX(ss.upload_date) FROM cafecoder.%s ss WHERE ss.userid=uid GROUP BY ss.userid) ud FROM cafecoder.%s GROUP BY uid ORDER BY sumpoint DESC , ud ASC", jsonData.ContestId, jsonData.ContestId, jsonData.ContestId)
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
