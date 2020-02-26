@@ -1,0 +1,13 @@
+INSERT INTO cafecoder.contests(id, name, start_time, end_time) VALUES('tea004', 'tea004', '2019-12-30 21:00:00','2019-12-30 22:40:00');
+INSERT INTO cafecoder.problems(id, contest_id, name, point, testcase_id) VALUES('tea004A','tea004', 'A', 50, 'tea004A');
+INSERT INTO cafecoder.testcases(id, problem_id, listpath)VALUES('tea004A','tea004A', '/home/cafecoder-judge/testcase/tea004/A/');
+INSERT INTO cafecoder.problems(id, contest_id, name, point, testcase_id) VALUES('tea004B','tea004', 'B', 100, 'tea004B');
+INSERT INTO cafecoder.testcases(id, problem_id, listpath)VALUES('tea004B','tea004B', '/home/cafecoder-judge/testcase/tea004/B/');
+INSERT INTO cafecoder.problems(id, contest_id, name, point, testcase_id) VALUES('tea004C','tea004', 'C', 150, 'tea004C');
+INSERT INTO cafecoder.testcases(id, problem_id, listpath)VALUES('tea004C','tea004C', '/home/cafecoder-judge/testcase/tea004/C/');
+INSERT INTO cafecoder.problems(id, contest_id, name, point, testcase_id) VALUES('tea004D','tea004', 'D', 250, 'tea004D');
+INSERT INTO cafecoder.testcases(id, problem_id, listpath)VALUES('tea004D','tea004D', '/home/cafecoder-judge/testcase/tea004/D/');
+INSERT INTO cafecoder.problems(id, contest_id, name, point, testcase_id) VALUES('tea004E','tea004', 'E', 350, 'tea004E');
+INSERT INTO cafecoder.testcases(id, problem_id, listpath)VALUES('tea004E','tea004E', '/home/cafecoder-judge/testcase/tea004/E/');
+INSERT INTO cafecoder.problems(id, contest_id, name, point, testcase_id) VALUES('tea004F','tea004', 'F', 450, 'tea004F');
+INSERT INTO cafecoder.testcases(id, problem_id, listpath)VALUES('tea004F','tea004F', '/home/cafecoder-judge/testcase/tea004/F/');

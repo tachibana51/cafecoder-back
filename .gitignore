@@ -1,2 +1,4 @@
-./fileserver/submits/*
-./fileserver/testcase/*
+fileserver/submits/*
+fileserver/testcase/*
+log
+nohup.out

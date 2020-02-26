@@ -415,7 +415,7 @@ func allSubmitsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.M
 			return
 		}
 		//get from db
-		rows, err := (*sqlCon).SafeSelect("SELECT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND problems.contest_id = '%s' ORDER BY code_sessions.upload_date DESC", jsonData.ContestId)
+		rows, err := (*sqlCon).SafeSelect("SELECT DISTINCT users.name, problems.name, code_sessions.id, code_sessions.upload_date, code_sessions.result FROM users, code_sessions, problems , contests WHERE code_sessions.user_id = users.id AND problems.id = code_sessions.problem_id AND problems.contest_id = '%s' AND contests.id = problems.contest_id AND contests.start_time < code_sessions.upload_date ORDER BY code_sessions.upload_date DESC", jsonData.ContestId)
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -643,7 +643,7 @@ func allContestsHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.
 			return
 		}
 		//get db
-		rows, err := (*sqlCon).SafeSelect("SELECT contests.name, contests.start_time, contests.end_time FROM contests")
+		rows, err := (*sqlCon).SafeSelect("SELECT contests.name, contests.start_time, contests.end_time FROM contests ORDER BY contests.start_time DESC")
 		defer rows.Close()
 		if err != nil {
 			fmt.Println(err)
@@ -728,6 +728,7 @@ func rankingHandler(w http.ResponseWriter, r *http.Request, sqlCon **cafedb.MyCo
 		for i := 1; rows.Next(); i++ {
 			rows.Scan(&userid, &userName, &point, &dummy)
 			rowt, err := (*sqlCon).SafeSelect("SELECT problem, sessionid, TIMEDIFF(upload_date, contests.start_time) time , point FROM contests, cafecoder.%s WHERE cafecoder.%s.userid = '%s' AND contests.id = '%s' ORDER BY problem ASC", jsonData.ContestId, jsonData.ContestId, userid, jsonData.ContestId)
+			defer rowt.Close()
 			if err != nil {
 				fmt.Println(err)
 				return
