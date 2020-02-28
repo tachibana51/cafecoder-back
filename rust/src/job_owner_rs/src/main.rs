@@ -4,32 +4,36 @@ extern crate serde;
 extern crate serde_json;
 use std::thread;
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
+use std::sync::{Arc, Mutex, RwLock};
 use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::str;
 use mysql as my;
+use serde::{Serialize, Deserialize};
 
+//todo config struct
+static JUDGE_HOST_PORT: &'static str = env!("JUDGE_HOST_PORT");
+//const JUDGE_MAX : i64 = env!("JUDGE_MAX").parse().unwrap();
+const JUDGE_MAX : i64 = 10;
 //job map<job, num>
 struct MutexJobMap {
-    mutexJobMap : Mutex<HashMap<String, Vec<u8>>>,
+    mutex_job_map : Mutex<HashMap<String, Vec<u8>>>,
 }
 
 impl MutexJobMap {
     fn new() -> MutexJobMap {
         MutexJobMap {
-            mutexJobMap : Mutex::new(HashMap::new())
+            mutex_job_map : Mutex::new(HashMap::new())
         }
     }
 }
 
 //json
-use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize)]
 struct Testcase {
     name : String,
     result: String,
-    memoryUsed: i64,
+    memory_used: i64,
     time: i64,
 }
 
@@ -43,7 +47,7 @@ struct OverAllResult {
     testcases : Vec<Testcase>,
 }
 
-fn read_data_stream(mut stream: &TcpStream) -> [u8; 1024] {
+fn read_data_stream(mut stream: TcpStream) -> [u8; 1024] {
     let mut data = [0 as u8; 1024];
     match stream.read(&mut data) {
         Err(err) => println!("tcp read Error: {}", err) ,
@@ -53,31 +57,49 @@ fn read_data_stream(mut stream: &TcpStream) -> [u8; 1024] {
 }
 
 //dial tcp
+fn pass_to_judge (data : &[u8]) -> Result<usize, std::io::Error> {
+    TcpStream::connect(JUDGE_HOST_PORT)?.write(data)
+}
 
 //4649port
-fn handle_for_api_rq(stream: TcpStream) -> Result<String, str::Utf8Error> {
-    let data = read_data_stream(&stream);
-    let req_csv : Vec<&str> = str::from_utf8(&data)?.split(',').collect();
-    Ok("4649 ok".to_owned())
+fn handle_for_api_rq(stream: TcpStream, a_m_jobmap : &Arc<RwLock<HashMap<String,i64>>>) -> Result<String, String> {
+    let data = read_data_stream(stream);
+    //todo remove unwrap
+    let req_csv : Vec<&str> = str::from_utf8(&data).unwrap().split(',').collect();
+    //deside judge or que
+    if req_csv.len() <= 1 {
+        return Err("csv parse error".to_owned());
+    }
+    let mut current_map = (*a_m_jobmap).write().unwrap();
+    if let (i @ 0...JUDGE_MAX) = current_map.keys().len() as i64 {
+        current_map.insert(req_csv[1].to_string(), i);
+        println!("now works {}", i + 1);
+        return match pass_to_judge(&data) {
+            //todo remofe from map then pass judge err 
+            Err(_err) => Err("pass judge write Error".to_owned()),
+            _ => Ok("4649 ok".to_owned())
+        }
+    }else{
+        println!("to queue");
+        return Ok("to queue".to_owned())
+    }
 }
 
 //5963port
 fn handle_for_judge_rq(stream: TcpStream) {
-    let data = read_data_stream(&stream);
+    let data = read_data_stream(stream);
 }
 
 fn main() {
-    //todo config struct
-    let JUDGE_HOST_PORT: &'static str = env!("JUDGE_HOST_PORT");
-    let JUDGE_MAX : &'static str = env!("JUDGE_MAX");
     let mut children = vec![];
-    let mut mutex_job_map = MutexJobMap::new();
+    let m_jobmap  = Arc::new(RwLock::new(HashMap::<String, i64>::new()));
     //spawn api thread
     children.push(thread::spawn(move|| {
         let listener_from_api = TcpListener::bind("0.0.0.0:4649").unwrap();
         for stream in listener_from_api.incoming() {
+            let a_m_jobmap = m_jobmap.clone();
             thread::spawn(move|| {
-                println!("{:?}", handle_for_api_rq(stream.unwrap()).unwrap_or("4649 err".to_owned()));
+                println!("{:?}", handle_for_api_rq(stream.unwrap(), &a_m_jobmap).unwrap_or_else(|e| e.to_owned()));
             });
         }
     }));
