@@ -16,13 +16,13 @@ static JUDGE_HOST_PORT: &'static str = env!("JUDGE_HOST_PORT");
 static JUDGE_MAX : &'static str = env!("JUDGE_MAX");
 //job map<job, num>
 struct MutexJobMap {
-    mutexJobMap : Mutex<HashMap<String, Vec<u8>>>,
+    mutex_job_map : Mutex<HashMap<String, Vec<u8>>>,
 }
 
 impl MutexJobMap {
     fn new() -> MutexJobMap {
         MutexJobMap {
-            mutexJobMap : Mutex::new(HashMap::new())
+            mutex_job_map : Mutex::new(HashMap::new())
         }
     }
 }
@@ -61,10 +61,15 @@ fn pass_to_judge (data : &[u8]) -> Result<usize, std::io::Error> {
 }
 
 //4649port
-fn handle_for_api_rq(stream: TcpStream) -> Result<String, str::Utf8Error> {
+fn handle_for_api_rq<T>(stream: TcpStream, a_m_jobmap : Arc<T>) -> Result<String, String> {
     let data = read_data_stream(&stream);
-    let req_csv : Vec<&str> = str::from_utf8(&data)?.split(',').collect();
-    Ok("4649 ok".to_owned())
+    let req_csv : Vec<&str> = str::from_utf8(&data).unwrap_or(&"None".to_owned()).split(',').collect();
+    //deside judge or que
+    Arc::try_unwrap(a_m_jobmap).lock();
+    match pass_to_judge(&data) {
+        Err(_err) => Err("pass judge write Error".to_owned()),
+        _ => Ok("4649 ok".to_owned())
+    }
 }
 
 //5963port
@@ -74,13 +79,14 @@ fn handle_for_judge_rq(stream: TcpStream) {
 
 fn main() {
     let mut children = vec![];
-    let mutex_job_map = MutexJobMap::new();
+    let m_jobmap  = Arc::new(MutexJobMap::new());
     //spawn api thread
     children.push(thread::spawn(move|| {
         let listener_from_api = TcpListener::bind("0.0.0.0:4649").unwrap();
         for stream in listener_from_api.incoming() {
-            thread::spawn(move|| {
-                println!("{:?}", handle_for_api_rq(stream.unwrap()).unwrap_or("4649 err".to_owned()));
+            let a_m_jobmap = Arc::clone(&m_jobmap);
+            thread::spawn(|| {
+                println!("{:?}", handle_for_api_rq(stream.unwrap(), a_m_jobmap).unwrap_or("4649 err".to_owned()));
             });
         }
     }));
