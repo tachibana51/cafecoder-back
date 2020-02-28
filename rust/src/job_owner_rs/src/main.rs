@@ -9,7 +9,11 @@ use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
 use std::str;
 use mysql as my;
+use serde::{Serialize, Deserialize};
 
+//todo config struct
+static JUDGE_HOST_PORT: &'static str = env!("JUDGE_HOST_PORT");
+static JUDGE_MAX : &'static str = env!("JUDGE_MAX");
 //job map<job, num>
 struct MutexJobMap {
     mutexJobMap : Mutex<HashMap<String, Vec<u8>>>,
@@ -24,12 +28,11 @@ impl MutexJobMap {
 }
 
 //json
-use serde::{Serialize, Deserialize};
 #[derive(Serialize, Deserialize)]
 struct Testcase {
     name : String,
     result: String,
-    memoryUsed: i64,
+    memory_used: i64,
     time: i64,
 }
 
@@ -53,6 +56,9 @@ fn read_data_stream(mut stream: &TcpStream) -> [u8; 1024] {
 }
 
 //dial tcp
+fn pass_to_judge (data : &[u8]) -> Result<usize, std::io::Error> {
+    TcpStream::connect(JUDGE_HOST_PORT)?.write(data)
+}
 
 //4649port
 fn handle_for_api_rq(stream: TcpStream) -> Result<String, str::Utf8Error> {
@@ -67,11 +73,8 @@ fn handle_for_judge_rq(stream: TcpStream) {
 }
 
 fn main() {
-    //todo config struct
-    let JUDGE_HOST_PORT: &'static str = env!("JUDGE_HOST_PORT");
-    let JUDGE_MAX : &'static str = env!("JUDGE_MAX");
     let mut children = vec![];
-    let mut mutex_job_map = MutexJobMap::new();
+    let mutex_job_map = MutexJobMap::new();
     //spawn api thread
     children.push(thread::spawn(move|| {
         let listener_from_api = TcpListener::bind("0.0.0.0:4649").unwrap();
