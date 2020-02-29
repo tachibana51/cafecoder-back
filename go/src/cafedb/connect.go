@@ -8,6 +8,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"reflect"
 	"regexp"
+	"time"
 )
 
 type MyCon struct {
@@ -22,6 +23,7 @@ func NewCon() *MyCon {
 	}
 	con := new(MyCon)
 	con.DB = db
+	db.SetConnMaxLifetime(time.Second * 60)
 	con.Regex = regexp.MustCompile(`[^(0-9a-zA-Z\._@)]+`)
 	return con
 }
