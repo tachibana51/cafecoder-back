@@ -65,19 +65,21 @@ fn pass_to_judge (data : &[u8]) -> Result<usize, std::io::Error> {
 fn handle_for_api_rq(stream: TcpStream, a_m_jobmap : &Arc<RwLock<HashMap<String,i64>>>) -> Result<String, String> {
     let data = read_data_stream(stream);
     //todo remove unwrap
-    let req_csv : Vec<&str> = str::from_utf8(&data).unwrap().split(',').collect();
+    let req_csv : Vec<&str> = str::from_utf8(&data).map_err(|e| e.to_string())?.split(',').collect();
     //deside judge or que
     if req_csv.len() <= 1 {
         return Err("csv parse error".to_owned());
     }
     let mut current_map = (*a_m_jobmap).write().unwrap();
     if let (i @ 0...JUDGE_MAX) = current_map.keys().len() as i64 {
-        current_map.insert(req_csv[1].to_string(), i);
-        println!("now works {}", i + 1);
         return match pass_to_judge(&data) {
             //todo remofe from map then pass judge err 
+            Ok(x) => {
+                current_map.insert(req_csv[1].to_string(), i);
+                println!("now works {}", i + 1);
+                Ok("4649 ok".to_owned())
+               }
             Err(_err) => Err("pass judge write Error".to_owned()),
-            _ => Ok("4649 ok".to_owned())
         }
     }else{
         println!("to queue");
